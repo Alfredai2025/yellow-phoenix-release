@@ -1,0 +1,121 @@
+#!/usr/bin/env python3
+"""
+Phase 6 Benchmark: ShardedIndex on 1M embeddings.
+Target: 99% R@1, build <60s, query <2ms P50.
+"""
+
+import numpy as np
+import time
+import json
+from pathlib import Path
+from sharded_index import ShardedIndex
+
+EMB_1M = "data/paper_embeddings_arxiv_1m.npy"
+OUT_PATH = "logs/benchmark_phase6_sharded.json"
+
+
+def brute_force_nn(db, queries):
+    """Vectorized exact L2 nearest neighbor."""
+    db_norm = np.sum(db.astype(np.float32) ** 2, axis=1)
+    gt = np.empty(queries.shape[0], dtype=np.int64)
+    batch_q = 100
+    for start in range(0, queries.shape[0], batch_q):
+        end = min(start + batch_q, queries.shape[0])
+        q = queries[start:end].astype(np.float32)
+        q_norm = np.sum(q ** 2, axis=1)
+        cross = db @ q.T
+        dists = db_norm[:, None] + q_norm[None, :] - 2.0 * cross
+        gt[start:end] = np.argmin(dists, axis=0)
+    return gt
+
+
+def benchmark(sharded, db, queries, gt_nn, k_per_shard=50, k_final=1):
+    n_q = len(queries)
+    latencies = []
+    correct = 0
+
+    for i, q in enumerate(queries):
+        t0 = time.perf_counter()
+        ids, dists = sharded.search(q, k_per_shard=k_per_shard, k_final=k_final)
+        lat = time.perf_counter() - t0
+        latencies.append(lat)
+
+        if len(ids) > 0 and int(ids[0]) == int(gt_nn[i]):
+            correct += 1
+
+    r1 = correct / n_q
+    latencies = np.array(latencies)
+    return {
+        "n_shards": sharded.n_shards,
+        "k_per_shard": k_per_shard,
+        "k_final": k_final,
+        "M": sharded.M,
+        "ef_search": sharded.ef_search,
+        "r1": round(r1, 4),
+        "p50_us": round(float(np.percentile(latencies, 50)) * 1e6, 1),
+        "p95_us": round(float(np.percentile(latencies, 95)) * 1e6, 1),
+        "qps": round(float(n_q / np.sum(latencies)), 0),
+    }
+
+
+def main():
+    if not Path(EMB_1M).exists():
+        print(f"[!] {EMB_1M} not found. Skipping 1M benchmark.")
+        return
+
+    print("=== Phase 6: 1M Sharded Benchmark ===")
+    emb = np.load(EMB_1M).astype(np.float32)
+    n_total = len(emb)
+    n_db = 999_000
+    n_q = 1000
+    db = emb[:n_db]
+    queries = emb[n_db:n_db + n_q]
+
+    print(f"[*] DB: {n_db}, Queries: {n_q}, Dim: {emb.shape[1]}")
+
+    print("[*] Computing ground truth (vectorized L2)...")
+    t0 = time.time()
+    gt_nn = brute_force_nn(db, queries)
+    print(f"    GT computed in {time.time()-t0:.2f}s")
+
+    configs = [
+        {"n_shards": 4, "k_per_shard": 50, "M": 16, "ef": 50},
+        {"n_shards": 4, "k_per_shard": 100, "M": 16, "ef": 50},
+        {"n_shards": 4, "k_per_shard": 50, "M": 32, "ef": 50},
+        {"n_shards": 8, "k_per_shard": 50, "M": 16, "ef": 50},
+    ]
+
+    results = []
+    for cfg in configs:
+        print(f"\n[*] Config: shards={cfg['n_shards']}, k_per_shard={cfg['k_per_shard']}, M={cfg['M']}, ef={cfg['ef']}")
+        idx = ShardedIndex(
+            dim=emb.shape[1],
+            n_shards=cfg['n_shards'],
+            M=cfg['M'],
+            ef_construction=200,
+            ef_search=cfg['ef']
+        )
+        build_t = idx.build(db)
+        print(f"    Build: {build_t:.2f}s")
+
+        res = benchmark(idx, db, queries, gt_nn, k_per_shard=cfg['k_per_shard'], k_final=1)
+        res['build_s'] = round(build_t, 2)
+        results.append(res)
+
+        print(f"    R@1: {res['r1']:.4f}")
+        print(f"    P50: {res['p50_us']:.1f} µs")
+        print(f"    P95: {res['p95_us']:.1f} µs")
+        print(f"    QPS: {res['qps']:.0f}")
+
+    Path(OUT_PATH).parent.mkdir(exist_ok=True)
+    with open(OUT_PATH, "w") as f:
+        json.dump(results, f, indent=2)
+    print(f"\n[+] Saved to {OUT_PATH}")
+
+    best = max(results, key=lambda x: x['r1'])
+    print(f"\nBest config: shards={best['n_shards']}, k_per_shard={best['k_per_shard']}, M={best['M']}")
+    print(f"  R@1: {best['r1']:.4f}, P50: {best['p50_us']:.1f} µs, Build: {best['build_s']:.1f}s")
+
+
+if __name__ == "__main__":
+    main()

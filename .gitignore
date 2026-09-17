@@ -1,0 +1,12 @@
+target/
+data/
+logs/
+*.db
+*.bin
+*.npy
+*.f16
+*.ism
+.DS_Store
+__pycache__/
+*.log
+node_modules/

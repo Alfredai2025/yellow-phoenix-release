@@ -1,0 +1,322 @@
+#![cfg_attr(not(any(test, feature = "std")), no_std)]
+#![allow(static_mut_refs)]
+
+extern crate alloc;
+
+#[cfg(all(not(test), not(feature = "std")))]
+#[panic_handler]
+fn panic(_info: &::core::panic::PanicInfo) -> ! {
+    unsafe { libc::abort(); }
+}
+
+#[cfg(all(not(test), not(feature = "std")))]
+#[no_mangle]
+extern "C" fn rust_eh_personality() {}
+
+// ---------- global allocator (libc-backed, required for the no_std prototype Vec) ----------
+
+#[cfg(not(any(test, feature = "std")))]
+mod alloc_fallback {
+    use core::alloc::{GlobalAlloc, Layout};
+    use core::mem;
+    use core::ptr;
+    use libc::{c_void, free, posix_memalign};
+
+    pub struct LibcAllocator;
+
+    unsafe impl GlobalAlloc for LibcAllocator {
+        unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+            let size = layout.size();
+
+            // Zero-size allocation: return a non-null dangling pointer.
+            if size == 0 {
+                // For zero-sized allocations, Rust expects a non-null pointer.
+                return ptr::NonNull::dangling().as_ptr();
+            }
+
+            // posix_memalign requires alignment ≥ sizeof(void*) and a power of two.
+            let pointer_size = mem::size_of::<*const u8>();
+            let align = layout.align().max(pointer_size);
+
+            let mut memptr: *mut c_void = ptr::null_mut();
+            let ret = unsafe { posix_memalign(&mut memptr, align, size) };
+            if ret == 0 {
+                memptr as *mut u8
+            } else {
+                ptr::null_mut()
+            }
+        }
+
+        unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
+            unsafe { free(ptr as *mut c_void) };
+        }
+    }
+
+    #[global_allocator]
+    static ALLOCATOR: LibcAllocator = LibcAllocator;
+}
+
+pub mod types;
+pub mod memory;
+pub mod core;
+pub mod distance;
+pub mod query;
+pub mod cascade_index;
+pub mod direct_hash;
+pub mod math;
+pub mod solver;
+pub mod crystal;
+pub mod router;
+pub mod lsh;
+
+pub mod ffi;
+pub mod algebra;
+pub mod ffi_kernel;
+
+// ---------- FFI bridge ----------
+
+use crate::core::resonance::QueryPipeline;
+use crate::core::encoder::Encoder;
+use crate::memory::ring_buffer::SpscRingBuffer;
+
+static mut PIPELINE: Option<QueryPipeline> = None;
+static mut RING: Option<SpscRingBuffer<1024>> = None;
+
+/// Initialise the pipeline and the ring buffer with custom thresholds.
+/// Returns 0 on success.
+#[no_mangle]
+pub extern "C" fn mirror_mesh_init_with_thresholds(t0: u32, t1: u32, t2: u32) -> i32 {
+    unsafe {
+        PIPELINE = Some(QueryPipeline::with_thresholds(t0, t1, t2));
+        RING = Some(SpscRingBuffer::<1024>::new());
+    }
+    0
+}
+
+/// Initialise the pipeline and the ring buffer.
+/// Returns 0 on success.
+#[no_mangle]
+pub extern "C" fn mirror_mesh_init() -> i32 {
+    unsafe {
+        PIPELINE = Some(QueryPipeline::new_default());
+        RING = Some(SpscRingBuffer::<1024>::new());
+    }
+    0
+}
+
+/// Encode a paper from raw bytes and add it to every tier.
+/// Returns 0 on success, -1 on error.
+#[no_mangle]
+pub extern "C" fn mirror_mesh_add_paper(data: *const u8, len: usize) -> i32 {
+    if data.is_null() || len == 0 {
+        return -1;
+    }
+    let text = match unsafe { ::core::str::from_utf8(::core::slice::from_raw_parts(data, len)) } {
+        Ok(s) => s,
+        Err(_) => return -1,
+    };
+    let encoder = Encoder::new(0);
+    let bow = encoder.encode_paper_bow(text);
+    let exact = encoder.encode_paper(text);
+    unsafe {
+        let pipeline = match PIPELINE.as_mut() {
+            Some(p) => p,
+            None => return -1,
+        };
+        pipeline.add_paper_bow(&bow, &exact);
+    }
+    0
+}
+
+#[no_mangle]
+pub extern "C" fn mirror_mesh_query(
+    data: *const u8,
+    len: usize,
+    result: *mut u8,
+    result_len: usize,
+) -> i32 {
+    if data.is_null() || result.is_null() || result_len < 16 {
+        return -11;
+    }
+    if len == 0 {
+        return -1;
+    }
+    let text = match unsafe { ::core::str::from_utf8(::core::slice::from_raw_parts(data, len)) } {
+        Ok(s) => s,
+        Err(_) => return -1,
+    };
+    let encoder = Encoder::new(0);
+    let bow = encoder.encode_paper_bow(text);
+    let exact = encoder.encode_paper(text);
+
+    let pipeline = match unsafe { PIPELINE.as_mut() } {
+        Some(p) => p,
+        None => return -13,
+    };
+    let query_result = pipeline.query_bow(&bow, &exact);
+
+    let match_count = query_result.matches.len() as i32;
+
+    let mut best_dist: Option<u32> = None;
+    let mut best_idx: usize = 0;
+    for (i, dist) in &query_result.matches {
+        if best_dist.map_or(true, |d| *dist < d) {
+            best_dist = Some(*dist);
+            best_idx = *i;
+        }
+    }
+
+    let score: f32 = best_dist.map(|d| 1.0 / (1.0 + d as f32)).unwrap_or(0.0_f32);
+    let top_idx: i32 = best_idx as i32;
+
+    let out = unsafe { ::core::slice::from_raw_parts_mut(result, result_len) };
+    out[0..4].copy_from_slice(&score.to_le_bytes());
+    out[4..8].copy_from_slice(&top_idx.to_le_bytes());
+    out[8..12].copy_from_slice(&match_count.to_le_bytes());
+    out[12..16].copy_from_slice(&(query_result.tier as i32).to_le_bytes());
+
+    match_count
+}
+
+/// Return the total number of queries executed so far.
+#[no_mangle]
+pub extern "C" fn mirror_mesh_stats() -> u64 {
+    unsafe {
+        match PIPELINE.as_ref() {
+            Some(p) => p.query_count(),
+            None => 0,
+        }
+    }
+}
+
+/// Encode UTF‑8 text to a 128‑bit binary vector (16 bytes).
+/// Writes 16 bytes into `out`; returns 0 on success, -1 on error.
+#[no_mangle]
+pub extern "C" fn mirror_mesh_encode(data: *const u8, len: usize, out: *mut u8) -> i32 {
+    if data.is_null() || out.is_null() {
+        return -1;
+    }
+    if len == 0 {
+        return -1;
+    }
+    let text = match unsafe { ::core::str::from_utf8(::core::slice::from_raw_parts(data, len)) } {
+        Ok(s) => s,
+        Err(_) => return -1,
+    };
+    let encoder = Encoder::new(0);
+    let bytes = encoder.encode_to_bytes(text);
+    unsafe {
+        ::core::ptr::copy_nonoverlapping(bytes.as_ptr(), out, 16);
+    }
+    0
+}
+
+// ---------------------------------------------------------------------------
+// FFI: Cascading Retrieval
+// ---------------------------------------------------------------------------
+
+use ::core::ffi::{c_int, c_float, c_void};
+
+/// Run a 4-stage cascade query on an existing LSH index.
+/// Returns count of results written to distances_out/indices_out.
+/// Stats are written to stats_out as 6 u64 values:
+///   [0] = stage1_candidates, [1] = stage2_candidates, [2] = stage3_candidates,
+///   [3] = stage4_candidates, [4] = total_time_us, [5] = reserved
+#[no_mangle]
+pub extern "C" fn mirror_mesh_cascade_query(
+    index_handle: *mut c_void,
+    query_data: *const u64,
+    top_k: c_int,
+    fast_threshold: c_float,
+    lsh_radius: c_int,
+    pap_keep: c_int,
+    resonance_enabled: c_int,
+    distances_out: *mut c_float,
+    indices_out: *mut c_int,
+    stats_out: *mut u64,
+) -> c_int {
+    use crate::query::LSHIndex;
+    use crate::cascade::{CascadeConfig, cascade_query};
+    use crate::types::multivector::BinaryMultivector;
+
+    if index_handle.is_null() || query_data.is_null() {
+        return -1;
+    }
+
+    let index = unsafe { &*(index_handle as *mut LSHIndex) };
+    let query = unsafe {
+        BinaryMultivector([*query_data.offset(0), *query_data.offset(1)])
+    };
+
+    let config = CascadeConfig {
+        lsh_radius: lsh_radius as i16,
+        pap_keep: pap_keep as usize,
+        resonance_enabled: resonance_enabled != 0,
+        hologram_enabled: false,
+    };
+
+    let (results, stats) = cascade_query(
+        index,
+        &query,
+        top_k as usize,
+        fast_threshold,
+        &config,
+    );
+
+    let count = results.len().min(top_k as usize);
+
+    unsafe {
+        for (i, (idx, dist)) in results.iter().enumerate().take(count) {
+            *distances_out.offset(i as isize) = *dist;
+            *indices_out.offset(i as isize) = *idx as c_int;
+        }
+        if !stats_out.is_null() {
+            *stats_out.offset(0) = stats.stage1_candidates as u64;
+            *stats_out.offset(1) = stats.stage2_candidates as u64;
+            *stats_out.offset(2) = stats.stage3_candidates as u64;
+            *stats_out.offset(3) = stats.stage4_candidates as u64;
+            *stats_out.offset(4) = stats.total_time_us;
+            *stats_out.offset(5) = 0; // reserved
+        }
+    }
+
+    count as c_int
+}
+
+#[cfg(test)]
+mod ffi_tests {
+    use super::*;
+    use std::sync::Mutex;
+
+    static FFI_LOCK: Mutex<()> = Mutex::new(());
+
+    #[test]
+    fn ffi_init_returns_0() {
+        let _guard = FFI_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        assert_eq!(mirror_mesh_init(), 0);
+    }
+
+    #[test]
+    fn ffi_add_paper_and_query_returns_result() {
+        let _guard = FFI_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        assert_eq!(mirror_mesh_init_with_thresholds(0, 0, 0), 0);
+
+        let paper = [1u8; 16];
+        assert_eq!(mirror_mesh_add_paper(paper.as_ptr(), 16), 0);
+
+        let query = [1u8; 16];
+        let mut out = [0u8; 16];
+        let ret = mirror_mesh_query(query.as_ptr(), 16, out.as_mut_ptr(), 16);
+        assert!(ret > 0, "query should return a positive match count, got {}", ret);
+
+        let score = f32::from_le_bytes([out[0], out[1], out[2], out[3]]);
+        let index = i32::from_le_bytes([out[4], out[5], out[6], out[7]]);
+        assert!(score > 0.0_f32, "similarity score should be positive, got {score}");
+        assert_eq!(index, 0_i32, "best match index should be 0, got {index}");
+    }
+}
+pub mod pq;
+pub mod exact;
+pub mod cascade_index;
+pub mod cascade_index;
+pub mod pq;

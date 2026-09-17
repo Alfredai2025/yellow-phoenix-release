@@ -1,0 +1,138 @@
+[package]
+name = "mirror_mesh"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "pams"
+crate-type = ["cdylib", "rlib", "staticlib"]
+
+[features]
+trinity = []
+hash-lattice = []
+tabulated = []
+lucas-hash = []
+pme = []
+std = []
+simd = []
+living_mesh = []
+flat-array = []
+binary-hnsw = ["std"]
+holographic-cascade = ["std"]
+holographic-diffusion = ["holographic-cascade"]
+watchdog = []
+intelligent_shard_manager = ["watchdog"]
+clockwork_debug = []
+default = ["std", "binary-hnsw", "intelligent_shard_manager", "hash-lattice"]
+
+[dependencies]
+num-complex = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+hmac = "0.12"
+aes-gcm = "0.10"
+sha2 = "0.10"
+libc = "0.2"
+rand = "0.9"
+xxhash-rust = { version = "0.8", features = ["xxh3"] }
+hashbrown = "0.15"
+rustc-hash = "2.0"
+memmap2 = "0.9.11"
+zstd-safe = { version = "7", default-features = false }
+hex = "0.4.3"
+serde_json = "1.0.150"
+sysinfo = "0.38.4"
+crc32fast = "1.3"
+
+[dev-dependencies]
+tempfile = "3"
+criterion = "0.5"
+fastrand = "2.5.0"
+
+[[bench]]
+name = "query_benchmark"
+harness = false
+
+[[bench]]
+name = "million_papers"
+harness = false
+
+[profile.dev]
+
+[profile.release]
+panic = "abort"
+lto = true
+
+[profile.bench]
+panic = "unwind"
+
+[[bench]]
+name = "tier_hit_rate"
+harness = false
+
+[[bench]]
+name = "scale_thresholds"
+harness = false
+
+[[bench]]
+name = "workload_patterns"
+harness = false
+
+[[bench]]
+name = "throughput"
+harness = false
+
+[[bench]]
+name = "accuracy"
+harness = false
+
+[[bench]]
+name = "cold_start"
+harness = false
+
+[[bench]]
+name = "micro_benchmarks"
+harness = false
+
+[[bench]]
+name = "yp_query"
+harness = false
+
+[[bin]]
+name = "yp_cascade_service"
+path = "src/bin/cascade_service.rs"
+
+[[bin]]
+name = "yp_query"
+path = "src/bin/query.rs"
+
+[[bin]]
+name = "benchmark_sharded"
+path = "src/bin/benchmark_sharded.rs"
+
+[[bin]]
+name = "bench_hnsw384"
+path = "src/bin/bench_hnsw384.rs"
+
+[[bin]]
+name = "bench_ism"
+path = "src/bin/bench_ism.rs"
+
+[[bin]]
+name = "shootout_build_hnsw_106k"
+path = "src/bin/shootout_build_hnsw_106k.rs"
+
+[[bin]]
+name = "hnsw_extract_ism"
+path = "src/bin/hnsw_extract_ism.rs"
+
+[[bin]]
+name = "build_hnsw_from_ism"
+path = "src/bin/build_hnsw_from_ism.rs"
+
+[[bin]]
+name = "rebuild_hnsw_from_ism"
+path = "src/bin/rebuild_hnsw_from_ism.rs"
+
+[[bin]]
+name = "verify_hnsw_alignment"
+path = "src/bin/verify_hnsw_alignment.rs"
