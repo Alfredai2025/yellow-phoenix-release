@@ -31,6 +31,41 @@ indicative smoke numbers, not publication-grade medians.
 Outliers: 5–20% high-mild on most measurements (shared VM, expected).
 Full criterion log archived in session output.
 
+## Test suite (dev profile, serial, 2GB swap)
+- `cargo test --lib --bins --tests -- --test-threads=1`:
+  **363 passed; 0 failed** (587s). All bins and integration tests green.
+- One environment-specific integration test (`itq_row0`) is Mac-only by design
+  (hardcoded `/Users/mac/...` paths, requires the multi-GB real model artifacts
+  not synced to the droplet) — excluded from the Linux scope.
+- Method notes learned the hard way, for future runs:
+  - `cargo test --release` is invalid: `[profile.release] panic = "abort"`
+    conflicts with the test harness (needs unwind). Use dev profile.
+  - `cargo test` (default) also builds examples; `probe_tierc_r1` links a
+    prebuilt `libpams` via `#[link(name="pams")]` and needs the artifact
+    installed first. Use `--lib --bins --tests`.
+  - Parallel 1M-scale tests exceed 2GB RAM (OOM SIGKILL). Droplet now has a
+    permanent 2GB swapfile (/etc/fstab); run tests with `--test-threads=1`.
+
+## Additional benches
+- `accuracy` (100k tier sanity): self/neighbor/random/adversarial all tier=3,
+  10/10 matches, no tiering regressions. `accuracy_dummy`: 4.5ms.
+- `cold_start_100k`: **87.0ms median** cold-load from disk — flash-resident claim
+  evidence. (Reduced-sample settings; indicative, not publication-grade.)
+
+## Mac vs Linux head-to-head (identical bench, identical reduced-sample settings)
+| Bench | Mac M3 Pro 18GB | Linux droplet 2 vCPU | Mac advantage |
+|---|---|---|---|
+| ingestion | 1.26 µs | 2.43 µs | ~1.9× |
+| lsh_query 10k top1 | 5.47 µs | 25.98 µs | ~4.7× |
+| lsh_query 10k top5 | 5.46 µs | 24.72 µs | ~4.5× |
+| lsh_query 100k top1 | 8.91 µs | 44.51 µs | ~5.0× |
+| lsh_query 100k top5 | 9.40 µs | 48.24 µs | ~5.1× |
+| lsh_query 1M top1 | 86.7 µs | 1,362 µs | ~15.7× |
+| lsh_query 1M top5 | 90.5 µs | 1,196 µs | ~13.2× |
+Reading: identical scaling curves on both OSes (flat 10k→100k, knee at 1M);
+gap tracks hardware class (unified memory vs shared cloud vCPUs) and widens
+with scale — memory-bandwidth-bound regime. Portability: confirmed.
+
 ## Also fixed in this pass
 - `src/ffi_shootout.rs`: previous "portability" helper called itself recursively
   on macOS (infinite recursion → stack overflow in `yp_shootout_unload_*` paths);
