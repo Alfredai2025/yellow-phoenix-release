@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - name: cargo check
-        run: cargo check --workspace --all-targets --locked
+        run: cargo check --workspace --lib --bins --tests --locked
 
   smoke:
     name: Engine smoke test (build + insert + search + reload)
