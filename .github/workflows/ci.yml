@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  # Build-time genesis seed; documented dev value (see build.rs). Not a secret.
+  YP_GENESIS_PHRASE: YP_DEV_BUILD_2026_08_19
+
+jobs:
+  rust:
+    name: Rust type-check (all targets)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: cargo check
+        run: cargo check --workspace --all-targets --locked
+
+  python:
+    name: Python syntax validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: compileall
+        run: python -m compileall -q scripts tests
