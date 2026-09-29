@@ -41,3 +41,9 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 [Unreleased]: https://github.com/Alfredai2025/yellow-phoenix-release/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/Alfredai2025/yellow-phoenix-release/releases/tag/v1.0.0
+
+### Added
+- Legal & compliance stack: PRIVACY.md (zero-collection policy), TERMS.md,
+  DATA_COMPLIANCE.md (GDPR/CCPA analysis), docs/IP_NOTICE.md (trademark
+  status incl. informal "Yellow Phoenix" clearance notes + infringement
+  reporting) (2026-09-29). Review with counsel before filing/app launch.

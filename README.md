@@ -34,3 +34,9 @@ Dual-licensed by the sole copyright holder (Marc John Sawyer):
 
 External contributions require the [CLA](CLA.md).
 Every source file carries an `SPDX-License-Identifier: AGPL-3.0-or-later` header.
+
+## Legal & compliance
+
+- [Terms of Use](TERMS.md) · [Privacy Policy](PRIVACY.md) · [Data & Compliance (GDPR/CCPA)](DATA_COMPLIANCE.md)
+- [Intellectual Property Notice (trademark status, infringement reporting)](docs/IP_NOTICE.md)
+- External contributions: [CLA](CLA.md) · Commercial licensing: [COMMERCIAL.md](COMMERCIAL.md)
