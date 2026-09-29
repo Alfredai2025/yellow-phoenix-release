@@ -19,6 +19,19 @@ jobs:
       - name: cargo check
         run: cargo check --workspace --all-targets --locked
 
+  smoke:
+    name: Engine smoke test (build + insert + search + reload)
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: cargo test (self-contained smoke suite)
+        run: cargo test --test smoke -- --nocapture
+
   python:
     name: Python syntax validation
     runs-on: ubuntu-latest
