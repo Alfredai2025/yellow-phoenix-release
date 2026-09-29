@@ -1,0 +1,5 @@
+{"ts": "2026-09-28T15:16:24", "profile": "edge", "n_docs": 1266270, "queries": 300, "hash_r1": 59.33, "vines_r1": 73.33, "cand_recall": 100.0, "seconds": 7.4}
+{"ts": "2026-09-28T16:26:54", "curve_rung": true, "profile": "max", "baseline": 0.01, "curved": 0.01, "kept": false}
+{"ts": "2026-09-28T18:19:10", "curve_rung": true, "profile": "max", "baseline": 0.01, "curved": 0.01, "kept": false}
+{"ts": "2026-09-28T18:27:32", "curve_rung": true, "profile": "max", "baseline": 86.0, "curved": 86.6, "kept": true}
+{"ts": "2026-09-29T11:22:04", "density_rung": true, "profile": "max", "baseline": 86.6, "density": 86.6, "kept": false}

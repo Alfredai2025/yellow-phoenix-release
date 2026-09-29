@@ -7,6 +7,7 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Governor weekly health exam (2026-09-29) — vine self-exam ledger snapshot (`results/governor/`).
 - Community health files: this changelog, CONTRIBUTING.md, CI workflow
   (Rust type-check across all targets + Python syntax validation),
   issue templates.
