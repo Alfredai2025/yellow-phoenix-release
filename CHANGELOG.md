@@ -7,6 +7,17 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Linux build verification record: `cargo build --release` green on Ubuntu 22.04
+  (2 vCPU/2 GB DO droplet, rustc 1.98.1) + `query_benchmark` smoke numbers at
+  10k/100k/1M scale (`results/2026-09-29_linux_build_bench.md`) (2026-09-29).
+
+### Fixed
+- `ffi_shootout.rs` allocator-purge helper: previous macOS-gated wrapper recursed
+  into itself (stack overflow on `yp_shootout_unload_*`); replaced with
+  platform-gated helper — macOS `malloc_zone_pressure_relief`, Linux glibc
+  `malloc_trim(0)`, others no-op (2026-09-29).
+
+### Added
 - Engine smoke test: self-contained insert/search/reload suite (3 tests) + CI job running it on Ubuntu and macOS (2026-09-29).
 - Governor weekly health exam (2026-09-29) — vine self-exam ledger snapshot (`results/governor/`).
 - Community health files: this changelog, CONTRIBUTING.md, CI workflow

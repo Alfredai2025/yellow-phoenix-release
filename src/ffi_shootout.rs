@@ -24,21 +24,31 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::RwLock;
 use std::time::Instant;
 
-#[cfg(target_os = "macos")]
 extern "C" {
-    /// Drop allocator caches after releasing large buffers (macOS-only API).
+    /// Drop allocator caches after releasing large buffers (macOS malloc zones).
+    #[cfg(target_os = "macos")]
     fn malloc_zone_pressure_relief(zone: *mut c_void, relief: usize) -> usize;
+    /// glibc equivalent: return free heap pages to the OS.
+    #[cfg(all(target_os = "linux", target_env = "gnu"))]
+    fn malloc_trim(pad: usize) -> c_int;
 }
 
-/// Release allocator caches after dropping large buffers.
-/// macOS: uses the zone-pressure API. Other platforms: no-op.
-#[cfg(target_os = "macos")]
-fn allocator_pressure_relief() {
-    allocator_pressure_relief();
+/// Purge allocator caches after releasing large index buffers.
+/// Platform-specific best effort; safe no-op where unsupported.
+fn purge_allocator_caches() {
+    #[cfg(target_os = "macos")]
+    unsafe {
+        malloc_zone_pressure_relief(std::ptr::null_mut(), 0);
+    }
+    #[cfg(all(target_os = "linux", target_env = "gnu"))]
+    unsafe {
+        malloc_trim(0);
+    }
+    #[cfg(not(any(target_os = "macos", all(target_os = "linux", target_env = "gnu"))))]
+    {
+        // Unsupported platform: nothing to purge.
+    }
 }
-
-#[cfg(not(target_os = "macos"))]
-fn allocator_pressure_relief() {}
 
 use crate::binary_hnsw::{BinaryHNSW, Hash512, hamming_distance};
 
@@ -291,7 +301,7 @@ pub extern "C" fn yp_shootout_unload_ism() -> c_int {
         *guard = None;
     }
     // Purge any malloc caches that may be holding the released pages.
-    allocator_pressure_relief();
+    purge_allocator_caches();
     0
 }
 
@@ -305,7 +315,7 @@ pub extern "C" fn yp_shootout_unload_hnsw() -> c_int {
         }
         *guard = None;
     }
-    allocator_pressure_relief();
+    purge_allocator_caches();
     0
 }
 
