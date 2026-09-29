@@ -42,7 +42,7 @@ def s2_id(ext_id: str):
 def main():
     api_key = os.environ.get("S2_API_KEY", "")
     if not api_key:
-        print("WARNING: S2_API_KEY not set — running unauthenticated at 0.3 req/s")")
+        print("WARNING: S2_API_KEY not set — running unauthenticated at 0.3 req/s")
         print("(anonymous pool = 100 req / 5 min per IP; expect ~9h for 5.1M).")
         print("Get a free key for 1 req/s: https://www.semanticscholar.org/product/api")
         rps = 0.3

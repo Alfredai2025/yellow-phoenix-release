@@ -24,10 +24,21 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::RwLock;
 use std::time::Instant;
 
+#[cfg(target_os = "macos")]
 extern "C" {
-    /// Drop allocator caches after releasing large buffers.
+    /// Drop allocator caches after releasing large buffers (macOS-only API).
     fn malloc_zone_pressure_relief(zone: *mut c_void, relief: usize) -> usize;
 }
+
+/// Release allocator caches after dropping large buffers.
+/// macOS: uses the zone-pressure API. Other platforms: no-op.
+#[cfg(target_os = "macos")]
+fn allocator_pressure_relief() {
+    allocator_pressure_relief();
+}
+
+#[cfg(not(target_os = "macos"))]
+fn allocator_pressure_relief() {}
 
 use crate::binary_hnsw::{BinaryHNSW, Hash512, hamming_distance};
 
@@ -280,7 +291,7 @@ pub extern "C" fn yp_shootout_unload_ism() -> c_int {
         *guard = None;
     }
     // Purge any malloc caches that may be holding the released pages.
-    unsafe { malloc_zone_pressure_relief(std::ptr::null_mut(), 0); }
+    allocator_pressure_relief();
     0
 }
 
@@ -294,7 +305,7 @@ pub extern "C" fn yp_shootout_unload_hnsw() -> c_int {
         }
         *guard = None;
     }
-    unsafe { malloc_zone_pressure_relief(std::ptr::null_mut(), 0); }
+    allocator_pressure_relief();
     0
 }
 
