@@ -3,3 +3,4 @@
 {"ts": "2026-09-28T18:19:10", "curve_rung": true, "profile": "max", "baseline": 0.01, "curved": 0.01, "kept": false}
 {"ts": "2026-09-28T18:27:32", "curve_rung": true, "profile": "max", "baseline": 86.0, "curved": 86.6, "kept": true}
 {"ts": "2026-09-29T11:22:04", "density_rung": true, "profile": "max", "baseline": 86.6, "density": 86.6, "kept": false}
+{"ts": "2026-09-30T11:06:19", "exam": "vines_10m_max", "n_docs": 5646335, "queries": 1000, "profile": "max", "density": false, "cand@200": 90.3, "r@10": 84.9, "r@1": 17.6, "train_pairs": 15000, "notes": "first complete 5.65M exam; hash file repaired (sorted YISM, 5646335 records); gate probes report match=False (legacy strictness, non-blocking); density features off (1.27M champion used density) = main improvement lever"}
