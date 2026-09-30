@@ -66,6 +66,31 @@ Reading: identical scaling curves on both OSes (flat 10k→100k, knee at 1M);
 gap tracks hardware class (unified memory vs shared cloud vCPUs) and widens
 with scale — memory-bandwidth-bound regime. Portability: confirmed.
 
+## Variance study — query_benchmark ×3 + million_papers (2026-09-30 morning)
+Full-sample settings (20 samples / 10s). Run-to-run on the same droplet, no code changes:
+
+| Bench | Run 1 | Run 2 | Run 3 | Spread |
+|---|---|---|---|---|
+| tier1_query | 255 ns | 254 ns | 261 ns | ±1.5% (rock stable) |
+| tier2_ensemble | 666 ns | 676 ns | 680 ns | ±1% |
+| full_pipeline | 116.9 µs | 116.8 µs | 119.9 µs | ±1.3% |
+| ingestion | 2.31 µs | 2.40 µs | 2.51 µs | ±4% |
+| lsh_query 10k top1 | 24.77 µs | 24.30 µs | 27.00 µs | ±5% |
+| lsh_query 100k top1 | 48.08 µs | 45.56 µs | 46.85 µs | ±3% |
+| lsh_query 1M top1 | 1.364 ms | 1.545 ms | 2.398 ms | **+76% drift** |
+| lsh_query 1M top5 | 1.719 ms | 2.026 ms | 2.417 ms | **+41% drift** |
+
+Reading: cache-resident paths (micro tiers, 10k-100k) are robust run-to-run
+(1-5%). The 1M path degrades across successive runs — memory-bandwidth-bound
+workload on a shared multi-tenant host (neighbor load drift), consistent with
+the ±25-40% vs-baseline swings criterion measured between nights. Honest paper
+sentence: "cache-resident latencies are reproducible within a few percent;
+DRAM-resident latencies on shared cloud vCPUs vary by up to ~2× run-to-run."
+
+million_papers bench (different, heavier query path — resonance/cascade tiers,
+not raw LSH): 1M docs ingested in 593 ms; query_1m_papers 32.6 ms median.
+Not comparable to lsh_query — different pipeline stage, reported separately.
+
 ## Also fixed in this pass
 - `src/ffi_shootout.rs`: previous "portability" helper called itself recursively
   on macOS (infinite recursion → stack overflow in `yp_shootout_unload_*` paths);
