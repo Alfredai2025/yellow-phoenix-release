@@ -91,6 +91,26 @@ million_papers bench (different, heavier query path — resonance/cascade tiers,
 not raw LSH): 1M docs ingested in 593 ms; query_1m_papers 32.6 ms median.
 Not comparable to lsh_query — different pipeline stage, reported separately.
 
+## Equilibrium probes @5.65M (2026-09-30) — re-rank signal study
+Own-space, Q=1000, seed 31337, hash1024 shortlist (K=200, cand@200 = 100.0%):
+
+| Re-rank signal | Bytes/doc | R@1 | R@10 |
+|---|---|---|---|
+| f16 (16-dim) | 32 B | 10.2% | 43.6% |
+| LAD96 | 96 B | 83.4% | 100% |
+| PQ64-ADC | 64 B | 85.9% | 100% |
+| **OPQ64-ADC** | **64 B** | **88.0%** | **100%** |
+| full f32 384-dim (ceiling) | 1536 B | 87.8% | 100% |
+
+**Equilibrium result:** OPQ64-ADC re-rank (64 B/doc) matches or exceeds the
+full-precision ceiling (88.0 vs 87.8) — the 64-byte rotated code preserves
+ranking as well as the full 1.5 KB vector at this corpus. Recommended
+operating point: hash1024 shortlist (128 B) + OPQ64-ADC re-rank (64 B)
+≈ **192 B/doc → 88% R@1, 100% R@10 @5.65M** — vs the 1.27M champion profile's
+432 B/doc (see probe A below for the same-recipe 1.27M comparison).
+Interpretation: post-re-rank, ranking information is saturated; candidate
+coverage (100%) and codebook quality bound the result, not raw vector precision.
+
 ## Also fixed in this pass
 - `src/ffi_shootout.rs`: previous "portability" helper called itself recursively
   on macOS (infinite recursion → stack overflow in `yp_shootout_unload_*` paths);
