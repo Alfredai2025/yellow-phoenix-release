@@ -133,3 +133,8 @@ Q=1000 seed 31337, hash1024 shortlist K=200 (cand 100.0%), OPQ128-ADC re-rank
   weak base. Synthesis: ADC re-rank as base layer + properly trained gate on
   ADC scores/curves is the likely >90% system at 5.65M. Same-recipe comparison
   of the two scales remains slightly confounded by the query-encoding caveat.
+
+## Claims discipline note (2026-09-30)
+Scale claims use UNIQUE works only (current: 5.65M). Dual/multi-encoded record
+multiplicity was considered for reaching "10M+ records" and rejected as
+engineered duplication — measurable and defensible numbers only.
