@@ -121,3 +121,15 @@ coverage (100%) and codebook quality bound the result, not raw vector precision.
 The 5.65M-paper golden-stack exam cannot run on 2 GB RAM (index ≈ 9 GB);
 full-scale numbers remain with the Mac golden build. This record establishes
 cross-platform compilation and functional correctness on a second OS.
+
+## Equilibrium probe A @1.27M (2026-09-30) — cross-scale comparison
+Q=1000 seed 31337, hash1024 shortlist K=200 (cand 100.0%), OPQ128-ADC re-rank
+(128 B codes, 256 B/doc total with hash):
+- **R@1 81.6%, R@10 96.9%** — BELOW the champion gate profile (86.6% @432B/doc).
+- Caveat: queries re-encoded live via MiniLM (index docs encoded at build time);
+  query/index encoding consistency is weaker than the stored-embedding 5.65M probes.
+- Conclusion: at 1.27M the trained gate+curves genuinely beat raw ADC re-rank.
+  At 5.65M the reverse holds because the exam gate was thin (15k pairs) on a
+  weak base. Synthesis: ADC re-rank as base layer + properly trained gate on
+  ADC scores/curves is the likely >90% system at 5.65M. Same-recipe comparison
+  of the two scales remains slightly confounded by the query-encoding caveat.
