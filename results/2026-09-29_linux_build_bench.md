@@ -138,3 +138,17 @@ Q=1000 seed 31337, hash1024 shortlist K=200 (cand 100.0%), OPQ128-ADC re-rank
 Scale claims use UNIQUE works only (current: 5.65M). Dual/multi-encoded record
 multiplicity was considered for reaching "10M+ records" and rejected as
 engineered duplication — measurable and defensible numbers only.
+
+## Hybrid gate experiment @5.65M (2026-09-30, 16:40) — VERDICT
+10k native training queries (seed 777), 5 negatives/pair, 18-feature profile
+(curves on, density off), numpy logistic gate. Eval: same 1000q/seed 31337.
+- raw OPQ-ADC: R@1 84.4% | R@10 100%
+- **trained gate: R@1 85.5% | R@10 100%** → gate adds +1.1 pts only.
+- The 92-95% gate hypothesis is REFUTED at this scale/training volume; the
+  1.27M champion's gate advantage does not transfer to 5.65M crowding.
+- Scoring-rule caveat discovered: dot-product ADC ranks 88.0% but true
+  squared-L2 ADC ranks 84.4% on IDENTICAL codes (centroid norms). All
+  production numbers must use the L2 convention; the probes' 88.0 was dot.
+- Gate weights saved: /tmp/hybrid_gate_5m.npz (also reproducible from
+  scripts/hybrid_gate_experiment.py in the dev repo).
+- Paths past 85.5% remaining: dedup/version-aware evaluation, larger encoder.
