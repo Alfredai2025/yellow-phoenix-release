@@ -22,11 +22,15 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   cluster sidecar (watch-compatible).
 - Encoder pilot @100k: MiniLM 100% / BGE 100% own-space ceiling — wall is a
   large-scale (5.65M) phenomenon; BGE@5.65M ceiling probe running.
-- Watch-config breakthrough: 512-bit hash truncation scores 87.8% strict
-  (HIGHER than full 1024-bit's 86.1% — later bits add quantization noise).
-  64B/doc + 8B sidecar = 72B/doc → 4.97M papers in the 358MB watch budget,
-  cluster-aware 100.0% (independent clusters, 0 FOREIGN) at the coarser code.
-  ~1.8x the previous 2.8M-doc watch spec, fully measured.
+- Watch-config study (MAC-SIDE SIMULATION — physical watch bench pending):
+  512-bit hash truncation scores 87.8% strict, HIGHER than full 1024-bit's
+  86.1% (later bits add quantization noise). 64B/doc + 8B sidecar = 72B/doc
+  → 4.97M docs in the 358MB watch budget by arithmetic; cluster-aware 100.0%
+  (independent clusters, 0 FOREIGN) at the coarser code, n=1000, K=200.
+  NOT yet validated on physical Apple Watch hardware — the pending YPWatch
+  build (full-corpus payload + Memory Gate N_run trim + bench reporting)
+  must confirm on-device. Only physical watch numbers to date remain the
+  2026-09-21 legacy benches (3.03M records, Tier C 100%, p50 27ms).
 - Data note: 10,019 DB rows added after the 2026-09-29 index build —
   incremental ingest pass needed.
 
