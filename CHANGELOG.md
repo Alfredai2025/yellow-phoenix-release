@@ -6,6 +6,25 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Research — overnight experiment series (2026-10-01)
+- **Sheaf experiment REFUTED**: quarter-block hash features as gate inputs
+  scored 84.3% vs 86.1% baseline (5.65M corpus, n=1000). Branch closed.
+- **Bit-entropy audit**: 876/1024 live bits but effective rank 170/1024 —
+  hash bits are heavily redundant (explains the sheaf refutation).
+- **Twin-graph**: 26.32% of the 5.65M-record corpus sits in near-duplicate
+  clusters (728k clusters, max size 249).
+- **Hubness probe: negative** (skew 3.18, max 8/5000 shortlists) — impostors
+  are not hub documents. Branch closed.
+- **Tie-aware scoring validated** (independent clusters from arXiv IDs +
+  exact text, not the hash): strict R@1 86.1% → cluster-aware 100.0%
+  (≥97.4% at 95% CI); 0 foreign code collisions in 139 adjudicated misses.
+  Spec: `docs/tie_aware_scoring.md` in the working repo; 22 MB uint32
+  cluster sidecar (watch-compatible).
+- Encoder pilot @100k: MiniLM 100% / BGE 100% own-space ceiling — wall is a
+  large-scale (5.65M) phenomenon; BGE@5.65M ceiling probe running.
+- Data note: 10,019 DB rows added after the 2026-09-29 index build —
+  incremental ingest pass needed.
+
 ### Added
 - Linux build verification record: `cargo build --release` green on Ubuntu 22.04
   (2 vCPU/2 GB DO droplet, rustc 1.98.1) + `query_benchmark` smoke numbers at
