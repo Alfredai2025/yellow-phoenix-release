@@ -33,6 +33,19 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   2026-09-21 legacy benches (3.03M records, Tier C 100%, p50 27ms).
 - Data note: 10,019 DB rows added after the 2026-09-29 index build —
   incremental ingest pass needed.
+### Research — algorithm series (2026-10-01, afternoon)
+- **Two duplicate-cluster algorithms specified** (`docs/algorithms.md` in the
+  working repo): BDC (batch construction — exists, validated) and IPCM
+  (incremental purity-preserving maintenance — designed + implemented same day).
+- **IPCM proven on a live ingest**: 13,998/13,998 exact agreement with a full
+  batch rebuild; 0 deviations. Invariant: big-cluster bridge merges deferred
+  (purity preservation); reversible audit log.
+- **FOLD (arXiv:2606.03001) read and positioned**: inverse problem (ANN for
+  dedup vs dedup for retrieval); their tie observation corroborates our
+  mechanism; no purity-preserving merge algorithm exists there — that delta
+  remains ours. FOLD's bitmap signatures noted as a future fuzzy-channel
+  component, with credit.
+
 
 ### Added
 - Linux build verification record: `cargo build --release` green on Ubuntu 22.04
