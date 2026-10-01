@@ -88,3 +88,15 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   DATA_COMPLIANCE.md (GDPR/CCPA analysis), docs/IP_NOTICE.md (trademark
   status incl. informal "Yellow Phoenix" clearance notes + infringement
   reporting) (2026-09-29). Review with counsel before filing/app launch.
+
+## 2026-10-01 — canonical representative selection + sidecar system (working repo 40854885)
+- Display policy for duplicate clusters: most complete text wins, tie -> lowest
+  index. 735,186/5,660,333 docs now show a better copy; verified 5/5 on live
+  clusters via VineReranker.canonical_of(). Corpus ids carry no version
+  suffixes (stripped at source) — policy documented in sidecar meta.
+- Independent BDC sidecar @yp-corpus-20261001-3e9a2336: 4,925,147 clusters
+  (base-id + identical-text union-find, never the hash).
+- Max exam reports strict AND cluster-aware R@1/3/10, corpus-stamped.
+- Incident (resolved): index_10m_hashes.bin regenerated in wrong hash space;
+  production graph restored from backup; file ownership now exclusive to
+  build_index_10m.py. Standing rules in master memory.
