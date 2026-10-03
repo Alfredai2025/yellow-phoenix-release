@@ -100,3 +100,11 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Incident (resolved): index_10m_hashes.bin regenerated in wrong hash space;
   production graph restored from backup; file ownership now exclusive to
   build_index_10m.py. Standing rules in master memory.
+
+### Added — paper 3 release artifacts (2026-10-03)
+- `paper/YP_PAPER3_v1.0.2.pdf` — "Yellow Phoenix: Semantic Search on an Apple Watch — 86.5% Top-10 Fidelity at 3.9M Documents, Bit-Identical from watchOS to iOS to macOS and Linux" (author-review candidate; not on arXiv until the JOSS clock matures ~2027-03-29)
+- `docs/paper3_draft.md` — paper source
+- `examples/bench_{identical_1m,flat_identical,rerank_sweep}.rs` — the four-platform identical-N benches (graph + flat scan + K-sweep; certified K=200 reproduces 94.0)
+- `scripts/{kill_test_ce_gt,judge_bge_gt,judge_qwen3_gt}.py` — the three-judge kill-test panel + reconciliation instrumentation (pre-registered criterion; fired on strongest judge; conditioned fidelity 87.8/84.9/79.6)
+- `results/benchmark_results/` — device-run reports + reconciliation record
+- Measurement record anchored in the hash-witnessed chain (tip: Entry 786, re-witnessed 2026-10-03); Zenodo deposit follows.
