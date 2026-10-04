@@ -180,7 +180,7 @@ impl SelfTuner {
 // FFI
 // ---------------------------------------------------------------------------
 
-unsafe fn c_str_to_str(ptr: *const i8) -> Option<&'static str> {
+unsafe fn c_str_to_str(ptr: *const std::ffi::c_char) -> Option<&'static str> {
     if ptr.is_null() {
         return None;
     }
@@ -189,7 +189,7 @@ unsafe fn c_str_to_str(ptr: *const i8) -> Option<&'static str> {
     core::str::from_utf8(slice).ok()
 }
 
-fn json_to_c_string<T: Serialize>(value: &T) -> *mut i8 {
+fn json_to_c_string<T: Serialize>(value: &T) -> *mut std::ffi::c_char {
     match serde_json::to_string(value) {
         Ok(s) => {
             let c = match std::ffi::CString::new(s) {
@@ -220,8 +220,8 @@ pub extern "C" fn yp_tuner_free(ptr: *mut c_void) {
 #[no_mangle]
 pub extern "C" fn yp_tuner_submit_observation(
     ptr: *mut c_void,
-    json: *const i8,
-) -> *mut i8 {
+    json: *const std::ffi::c_char,
+) -> *mut std::ffi::c_char {
     if ptr.is_null() || json.is_null() {
         return json_to_c_string(&Diagnosis {
             phase: "diagnose",
@@ -253,7 +253,7 @@ pub extern "C" fn yp_tuner_submit_observation(
 }
 
 #[no_mangle]
-pub extern "C" fn yp_tuner_propose(ptr: *mut c_void) -> *mut i8 {
+pub extern "C" fn yp_tuner_propose(ptr: *mut c_void) -> *mut std::ffi::c_char {
     if ptr.is_null() {
         return json_to_c_string(&Proposal {
             phase: "propose",
@@ -269,8 +269,8 @@ pub extern "C" fn yp_tuner_propose(ptr: *mut c_void) -> *mut i8 {
 #[no_mangle]
 pub extern "C" fn yp_tuner_submit_evaluation(
     ptr: *mut c_void,
-    json: *const i8,
-) -> *mut i8 {
+    json: *const std::ffi::c_char,
+) -> *mut std::ffi::c_char {
     if ptr.is_null() || json.is_null() {
         return json_to_c_string(&EvaluationAck {
             phase: "consolidate",
@@ -296,7 +296,7 @@ pub extern "C" fn yp_tuner_submit_evaluation(
 }
 
 #[no_mangle]
-pub extern "C" fn yp_tuner_free_string(ptr: *mut i8) {
+pub extern "C" fn yp_tuner_free_string(ptr: *mut std::ffi::c_char) {
     if !ptr.is_null() {
         unsafe {
             let _ = std::ffi::CString::from_raw(ptr);
