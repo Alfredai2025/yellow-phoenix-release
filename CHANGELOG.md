@@ -6,6 +6,17 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Publications — Paper 3 v1.0.4 (2026-10-04)
+- **Paper 3 "Yellow Phoenix: Semantic Search on an Apple Watch" v1.0.4**
+  published on Zenodo (record v3, DOI 10.5281/zenodo.23130414; concept
+  10.5281/zenodo.23118337). Changes vs v1.0.3: "fully offline" claim in the
+  abstract + keyword; offline sentences in §1/§3; new §10.1 Design projection
+  (Faraday-cage motivation, papers-per-gigabyte, 34.8 ms wrist vs ~1 s cloud
+  round-trip); Figure 3 repositioned (fixes near-empty page); watermark now
+  behind text. Additions only — zero deletions vs v1.0.3 (line-level diff).
+- Canonical `CLA.md` / `COMMERCIAL.md` + `examples/bench_rank_audit.rs`
+  (identical-N rank audit bench used in paper 3) added to the release repo.
+
 ### Research — overnight experiment series (2026-10-01)
 - **Sheaf experiment REFUTED**: quarter-block hash features as gate inputs
   scored 84.3% vs 86.1% baseline (5.65M corpus, n=1000). Branch closed.
