@@ -355,3 +355,310 @@ mod tests {
         assert!((simd[2] - scalar[2]).abs() < 0.001);
     }
 }
+
+// ---------------------------------------------------------------------------
+// ANN-benchmark two-stage kernels (added 2026-10-04, crown campaign Step 1).
+// AVX2+FMA via runtime detection; scalar fallback elsewhere. Standard
+// vector-instruction techniques; no third-party code.
+// ---------------------------------------------------------------------------
+
+#[cfg(target_arch = "x86_64")]
+fn have_avx2_fma() -> bool {
+    use std::sync::OnceLock;
+    static OK: OnceLock<bool> = OnceLock::new();
+    *OK.get_or_init(|| {
+        std::arch::is_x86_64_feature_detected!("avx2")
+            && std::arch::is_x86_64_feature_detected!("fma")
+    })
+}
+
+#[inline]
+pub fn l2_sq_f32(a: &[f32], b: &[f32]) -> f32 {
+    debug_assert_eq!(a.len(), b.len());
+    #[cfg(target_arch = "x86_64")]
+    {
+        if have_avx2_fma() {
+            // SAFETY: features detected above.
+            return unsafe { l2_sq_avx2(a, b) };
+        }
+    }
+    l2_sq_scalar(a, b)
+}
+
+#[inline]
+pub fn dot_f32(a: &[f32], b: &[f32]) -> f32 {
+    debug_assert_eq!(a.len(), b.len());
+    #[cfg(target_arch = "x86_64")]
+    {
+        if have_avx2_fma() {
+            // SAFETY: features detected above.
+            return unsafe { dot_avx2(a, b) };
+        }
+    }
+    dot_scalar(a, b)
+}
+
+fn l2_sq_scalar(a: &[f32], b: &[f32]) -> f32 {
+    let mut s = 0f32;
+    for i in 0..a.len() {
+        let d = a[i] - b[i];
+        s += d * d;
+    }
+    s
+}
+
+fn dot_scalar(a: &[f32], b: &[f32]) -> f32 {
+    let mut s = 0f32;
+    for i in 0..a.len() {
+        s += a[i] * b[i];
+    }
+    s
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx2,fma")]
+unsafe fn l2_sq_avx2(a: &[f32], b: &[f32]) -> f32 {
+    use core::arch::x86_64::*;
+    let n = a.len();
+    let mut acc0 = _mm256_setzero_ps();
+    let mut acc1 = _mm256_setzero_ps();
+    let mut i = 0;
+    while i + 16 <= n {
+        let d0 = _mm256_sub_ps(
+            _mm256_loadu_ps(a.as_ptr().add(i)),
+            _mm256_loadu_ps(b.as_ptr().add(i)),
+        );
+        acc0 = _mm256_fmadd_ps(d0, d0, acc0);
+        let d1 = _mm256_sub_ps(
+            _mm256_loadu_ps(a.as_ptr().add(i + 8)),
+            _mm256_loadu_ps(b.as_ptr().add(i + 8)),
+        );
+        acc1 = _mm256_fmadd_ps(d1, d1, acc1);
+        i += 16;
+    }
+    let mut s = ann_hsum256(acc0) + ann_hsum256(acc1);
+    while i < n {
+        let d = *a.get_unchecked(i) - *b.get_unchecked(i);
+        s += d * d;
+        i += 1;
+    }
+    s
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx2,fma")]
+unsafe fn dot_avx2(a: &[f32], b: &[f32]) -> f32 {
+    use core::arch::x86_64::*;
+    let n = a.len();
+    let mut acc0 = _mm256_setzero_ps();
+    let mut acc1 = _mm256_setzero_ps();
+    let mut i = 0;
+    while i + 16 <= n {
+        acc0 = _mm256_add_ps(acc0, _mm256_mul_ps(
+            _mm256_loadu_ps(a.as_ptr().add(i)),
+            _mm256_loadu_ps(b.as_ptr().add(i)),
+        ));
+        acc1 = _mm256_add_ps(acc1, _mm256_mul_ps(
+            _mm256_loadu_ps(a.as_ptr().add(i + 8)),
+            _mm256_loadu_ps(b.as_ptr().add(i + 8)),
+        ));
+        i += 16;
+    }
+    let mut s = ann_hsum256(acc0) + ann_hsum256(acc1);
+    while i < n {
+        s += *a.get_unchecked(i) * *b.get_unchecked(i);
+        i += 1;
+    }
+    s
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx2")]
+unsafe fn ann_hsum256(v: core::arch::x86_64::__m256) -> f32 {
+    use core::arch::x86_64::*;
+    let lo = _mm256_castps256_ps128(v);
+    let hi = _mm256_extractf128_ps(v, 1);
+    let s4 = _mm_add_ps(lo, hi);
+    let sh = _mm_movehl_ps(s4, s4);
+    let s2 = _mm_add_ps(s4, sh);
+    let s1 = _mm_add_ss(s2, _mm_movehdup_ps(s2));
+    _mm_cvtss_f32(s1)
+}
+
+/// Encode 512 bits: bit b = sign( dot(qm, wt_row_b) ); wt is 512x128 row-major
+/// (transposed at server load for cache/SIMD friendliness).
+pub fn encode512(qm: &[f32; 128], wt: &[[f32; 128]; 512]) -> [u8; 64] {
+    let mut code = [0u8; 64];
+    let mut b = 0;
+    while b < 512 {
+        if dot_f32(qm, &wt[b]) >= 0.0 {
+            code[b / 8] |= 1 << (7 - (b % 8));
+        }
+        b += 1;
+    }
+    code
+}
+
+// ---------------------------------------------------------------------------
+// Int8 dot-product kernels for the Int8Hnsw engine (T-int8 SIMD pass).
+// Computes sum(a[i] * b[i]) over 128 i8 lanes, exact in i32.
+// Codes are clipped to [-127,127] so _mm256_maddubs_epi16 pair-sums never
+// saturate (max pair sum 2*127*127 = 32258 < 32767). x86_64 + NEON + scalar.
+// ---------------------------------------------------------------------------
+
+/// Runtime-dispatched int8 dot product over 128 lanes.
+pub fn i8_dot_128(a: &[i8; 128], b: &[i8; 128]) -> i32 {
+    #[cfg(target_arch = "x86_64")]
+    {
+        if std::arch::is_x86_feature_detected!("avx2") {
+            return unsafe { avx2_i8_dot_128(a, b) };
+        }
+    }
+    #[cfg(target_arch = "aarch64")]
+    {
+        return unsafe { neon_i8_dot_128(a, b) };
+    }
+    i8_dot_128_scalar(a, b)
+}
+
+#[cfg(target_arch = "x86_64")]
+unsafe fn avx2_i8_dot_128(a: &[i8; 128], b: &[i8; 128]) -> i32 {
+    use std::arch::x86_64::*;
+    let ones = _mm256_set1_epi16(1);
+    let mut acc = _mm256_setzero_si256();
+    // 4 chunks of 32 bytes; maddubs -> i16 pair sums (no saturation at [-127,127]),
+    // then madd_epi16 with ones widens pairs to i32 and accumulates.
+    for chunk in 0..4 {
+        let off = chunk * 32;
+        let va = _mm256_loadu_si256(a[off..].as_ptr() as *const __m256i);
+        let vb = _mm256_loadu_si256(b[off..].as_ptr() as *const __m256i);
+        let prod = _mm256_maddubs_epi16(va, vb);
+        acc = _mm256_add_epi32(acc, _mm256_madd_epi16(prod, ones));
+    }
+    let mut lanes = [0i32; 8];
+    _mm256_storeu_si256(lanes.as_mut_ptr() as *mut __m256i, acc);
+    lanes.iter().sum()
+}
+
+#[cfg(target_arch = "aarch64")]
+unsafe fn neon_i8_dot_128(a: &[i8; 128], b: &[i8; 128]) -> i32 {
+    use std::arch::aarch64::*;
+    let mut acc = vdupq_n_s32(0);
+    // 8 chunks of 16 bytes: widen to i16, multiply, pairwise-add to i32.
+    for chunk in 0..8 {
+        let off = chunk * 16;
+        let va = vld1q_s8(a[off..].as_ptr());
+        let vb = vld1q_s8(b[off..].as_ptr());
+        let wa = vmovl_s8(vget_low_s8(va));
+        let wb = vmovl_s8(vget_low_s8(vb));
+        let hi_a = vmovl_s8(vget_high_s8(va));
+        let hi_b = vmovl_s8(vget_high_s8(vb));
+        let lo_p = vmulq_s16(wa, wb);
+        let hi_p = vmulq_s16(hi_a, hi_b);
+        acc = vaddq_s32(acc, vpaddlq_s16(lo_p));
+        acc = vaddq_s32(acc, vpaddlq_s16(hi_p));
+    }
+    vaddvq_s32(acc)
+}
+
+fn i8_dot_128_scalar(a: &[i8; 128], b: &[i8; 128]) -> i32 {
+    let mut s = 0i32;
+    for i in 0..128 {
+        s += a[i] as i32 * b[i] as i32;
+    }
+    s
+}
+
+/// Exact int8 L2 via the identity sum((a-b)^2) = sum(a^2) + sum(b^2) - 2*dot(a,b).
+/// All integer, order-independent (associative i32 adds, no overflow: max ~8.2M).
+pub fn i8_l2_128(a: &[i8; 128], b: &[i8; 128], a_sq: i32, b_sq: i32) -> i32 {
+    a_sq + b_sq - 2 * i8_dot_128(a, b)
+}
+
+/// Squared norm of a 128-lane int8 vector.
+pub fn i8_sq_128(a: &[i8; 128]) -> i32 {
+    i8_dot_128(a, a)
+}
+
+// ---------------------------------------------------------------------------
+// Mixed f32 x i8 dot product for reconstruction-L2 distance (Int8Hnsw v2).
+// sum(v[i] * c[i]) with v f32, c i8 -> f32. Used with the norm identity:
+//   ||v - x_hat||^2 = ||v||^2 + ||x_hat||^2 - 2*v.x_hat,  x_hat = C[cell]+code
+// so per candidate only this dot + precomputed norms are needed.
+// ---------------------------------------------------------------------------
+
+pub fn f32_i8_dot_128(v: &[f32; 128], c: &[i8; 128]) -> f32 {
+    #[cfg(target_arch = "x86_64")]
+    {
+        if std::arch::is_x86_feature_detected!("avx2") && std::arch::is_x86_feature_detected!("fma") {
+            return unsafe { avx2_f32_i8_dot_128(v, c) };
+        }
+    }
+    #[cfg(target_arch = "aarch64")]
+    {
+        return unsafe { neon_f32_i8_dot_128(v, c) };
+    }
+    f32_i8_dot_128_scalar(v, c)
+}
+
+#[cfg(target_arch = "x86_64")]
+unsafe fn avx2_f32_i8_dot_128(v: &[f32; 128], c: &[i8; 128]) -> f32 {
+    use std::arch::x86_64::*;
+    let mut acc = _mm256_setzero_ps();
+    for chunk in 0..4 {
+        let off = chunk * 32;
+        let vv = _mm256_loadu_ps(v[off..].as_ptr());
+        let cc8 = _mm_loadu_si128(c[off..].as_ptr() as *const __m128i);
+        let cc32 = _mm256_cvtepi32_ps(_mm256_cvtepi8_epi32(cc8));
+        acc = _mm256_fmadd_ps(vv, cc32, acc);
+    }
+    let mut lanes = [0f32; 8];
+    _mm256_storeu_ps(lanes.as_mut_ptr() as *mut __m256i, acc);
+    lanes.iter().sum()
+}
+
+#[cfg(target_arch = "aarch64")]
+unsafe fn neon_f32_i8_dot_128(v: &[f32; 128], c: &[i8; 128]) -> f32 {
+    use std::arch::aarch64::*;
+    let mut acc0 = vdupq_n_f32(0.0);
+    let mut acc1 = vdupq_n_f32(0.0);
+    for i in 0..16 {
+        let off = i * 8;
+        let v0 = vld1q_f32(v[off..].as_ptr());
+        let v1 = vld1q_f32(v[off + 4..].as_ptr());
+        let c8 = vld1_s8(c[off..].as_ptr());
+        let c16 = vmovl_s8(c8);
+        let c32_lo = vmovl_s16(vget_low_s16(c16));
+        let c32_hi = vmovl_s16(vget_high_s16(c16));
+        acc0 = vmlaq_f32(acc0, v0, vcvtq_f32_s32(c32_lo));
+        acc1 = vmlaq_f32(acc1, v1, vcvtq_f32_s32(c32_hi));
+    }
+    vaddvq_f32(vaddq_f32(acc0, acc1))
+}
+
+#[cfg(target_arch = "x86_64")]
+unsafe fn avx2_f32_i8_dot_128(v: &[f32; 128], c: &[i8; 128]) -> f32 {
+    use std::arch::x86_64::*;
+    let mut acc = _mm256_setzero_ps();
+    for i in 0..16 {
+        let off = i * 8;
+        let vv = _mm256_loadu_ps(v[off..].as_ptr());
+        let c_raw = _mm_loadu_si128(c[off..].as_ptr() as *const __m128i);
+        let c_f32 = _mm256_cvtepi32_ps(_mm256_cvtepi8_epi32(c_raw));
+        acc = _mm256_fmadd_ps(vv, c_f32, acc);
+    }
+    let hi = _mm256_extractf128_ps(acc, 1);
+    let lo = _mm256_castps256_ps128(acc);
+    let sum128 = _mm_add_ps(hi, lo);
+    let tmp1 = _mm_hadd_ps(sum128, sum128);
+    let tmp2 = _mm_hadd_ps(tmp1, tmp1);
+    _mm_cvtss_f32(tmp2)
+}
+
+fn f32_i8_dot_128_scalar(v: &[f32; 128], c: &[i8; 128]) -> f32 {
+    let mut s = 0f32;
+    for i in 0..128 {
+        s += v[i] * c[i] as f32;
+    }
+    s
+}

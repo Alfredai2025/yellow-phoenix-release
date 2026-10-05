@@ -6,6 +6,41 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added — ANN campaign engines and overlays (2026-10-05, all measurements SIFT-1M 10k queries, M3 Pro)
+
+**Int8Hnsw engine (new, fifth benchmark candidate: `yellow-phoenix-int8`):**
+HNSW over 128-byte residual-int8 codes (coarse k-means K=4096 + per-dim residual clip) with
+dual edge sets, unified clipped-residual distance (build and query use the same per-candidate-cell
+residual + maddubs SIMD identity — bit-exact), per-cell gateway entry (T7 compass), Vamana-style
+prune. Measured: ef128 0.9919@~940 QPS, ef512 0.9976@~500 QPS (beyond the binary stack ceiling),
+prune a0.9 -0.55pp for +11% QPS. Council of 3 external AIs reviewed all kernels and the distance
+identity (2 independent correctness proofs per critical section).
+New bins: build_int8_graph, int8_bench. New SIMD kernels: i8_dot_128 (AVX2 maddubs / NEON widen),
+i8_l2_128, i8_sq_128, f32_i8_dot_128 (all runtime-dispatched, scalar fallback).
+MEASURED-NULL record: float reconstruction-L2 v2 (identity-verified) was recall-neutral and 16%
+slower (widening-chain cost) — reverted; scalar-vs-SIMD dot was bit-exact but not the bottleneck.
+
+**BinaryHNSW overlays (ship-candidate stack for the PR family):**
+- `prune_diverse` / `prune_diverse_adaptive` / `prune_diverse_geo` (post-build Vamana-style,
+  alpha semantics: higher alpha cuts more) + prune_graph bin. Measured champion: alpha=0.9,
+  -24% visited, -0.0016 recall @ef64, zero recall cost ef>=256, all layers.
+- `search_with_ef_from` / `search_flat_from` (warm-start entry), HOPS visit counter,
+  fused_score sketch fusion (thread-local, integer fixed-point, +0.0005 recall at zero cost,
+  shuffle-control validated), node_hash/node_count/neighbors accessors, d==0 duplicate-prune fix.
+- New bins: phyllo_bench (compass A/B), verify_skip_bench (ITQ verify-skip LUT, measured
+  marginal — not in ship stack), bridge_graph (measured neutral — archived experiment).
+
+**PqHnsw:** sdc pairwise distance, prune_diverse port, search_with_ef_from (transfer-test
+harness). Measured: prune does NOT transfer to noisy ADC distances (-8.3pp); transfers cleanly to
+low-noise int8 (-0.55pp) and exact binary (-0.16pp) — noise-ordered, council-predicted.
+
+**two_stage_bench:** p99 latency added to output.
+**yp_ann_server:** --funnel ADC narrow stage (measured: overhead-bound, killed — code kept as
+honest record).
+
+Artifacts (not committed, large): ~/yp_ann/data (graphs, JSONs, codec files).
+
+
 ### Publications — Paper 3 v1.0.4 (2026-10-04)
 - **Paper 3 "Yellow Phoenix: Semantic Search on an Apple Watch" v1.0.4**
   published on Zenodo (record v3, DOI 10.5281/zenodo.23130414; concept

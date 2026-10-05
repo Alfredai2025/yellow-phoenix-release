@@ -29,6 +29,52 @@ pub type Hash512 = [u8; 64];
 /// Number of bytes in a 512-bit hash.
 pub const HASH512_BYTES: usize = 64;
 
+thread_local! {
+    /// Query-side hop counter (nodes visited per search_layer call); read by benches.
+    pub static HOPS: std::cell::Cell<u64> = std::cell::Cell::new(0);
+    /// In-graph fusion state, integer fast path. FSKETCH = raw ptr to leaked
+    /// [i32; 2*n] fixed-point sketch coords; FDEN = 0 disables fusion.
+    static FSKETCH: std::cell::Cell<*const i32> = const { std::cell::Cell::new(std::ptr::null()) };
+    static FQX: std::cell::Cell<i32> = const { std::cell::Cell::new(0) };
+    static FQY: std::cell::Cell<i32> = const { std::cell::Cell::new(0) };
+    static FDEN: std::cell::Cell<i64> = const { std::cell::Cell::new(0) };
+    static FWNUM: std::cell::Cell<i64> = const { std::cell::Cell::new(0) };
+}
+
+/// Enable integer in-graph fusion. `sketch` = 2 fixed-point i32 coords per node
+/// (raw coords * 1024). `den` = (rms_radius * 1024)^2; `wnum` = 64 * weight.
+/// The sketch vec is leaked (bench lifetime).
+pub fn set_fusion_int(sketch: Vec<i32>, den: i64, wnum: i64) {
+    let p = sketch.leak().as_ptr();
+    FSKETCH.with(|c| c.set(p));
+    FDEN.with(|c| c.set(den));
+    FWNUM.with(|c| c.set(wnum));
+}
+pub fn set_fusion_q(q: [i32; 2]) {
+    FQX.with(|c| c.set(q[0]));
+    FQY.with(|c| c.set(q[1]));
+}
+pub fn clear_fusion() {
+    FSKETCH.with(|c| c.set(std::ptr::null()));
+    FDEN.with(|c| c.set(0));
+}
+/// Fused score: hamming*64 + min(64*w*d_sketch^2/rms^2, 4096). All integer.
+#[inline]
+pub fn fused_score(idx: u32, dh: u32) -> u32 {
+    let den = FDEN.with(|c| c.get());
+    if den == 0 {
+        return dh;
+    }
+    let p = FSKETCH.with(|c| c.get());
+    let i = idx as usize * 2;
+    let (sx, sy, qx, qy) = unsafe { (*p.add(i), *p.add(i + 1), FQX.with(|c| c.get()), FQY.with(|c| c.get())) };
+    let dx = (sx - qx) as i64;
+    let dy = (sy - qy) as i64;
+    let d2 = dx * dx + dy * dy;
+    let term = ((d2 * FWNUM.with(|c| c.get())) / den).min(4096) as u32; // clamp in i64 BEFORE cast
+    dh.saturating_mul(64).saturating_add(term)
+}
+
 /// Number of bits in a 512-bit hash.
 pub const HASH512_BITS: u32 = 512;
 
@@ -361,6 +407,21 @@ impl BinaryHNSW {
     /// that need to map internal indices back to corpus ids.
     pub fn node_label(&self, idx: u32) -> u64 {
         self.nodes[idx as usize].id
+    }
+
+    /// Read-only access to a node's 512-bit code by internal index.
+    pub fn node_hash(&self, idx: u32) -> &Hash512 {
+        &self.nodes[idx as usize].hash
+    }
+
+    /// Copy of a node's primary neighbor IDs at a layer.
+    pub fn neighbors(&self, idx: u32, layer: usize) -> Vec<u32> {
+        self.neighbor_ids(idx, layer, true)
+    }
+
+    /// Number of nodes in the graph.
+    pub fn node_count(&self) -> usize {
+        self.nodes.len()
     }
 
     /// True if the index contains no nodes.
@@ -754,6 +815,222 @@ impl BinaryHNSW {
             .collect()
     }
 
+    /// Search starting from a given node with explicit ef (phyllotactic entry test).
+    pub fn search_with_ef_from(&self, query: &Hash512, k: usize, ef: usize, entry_point: u32) -> Vec<(u32, u32, u8)> {
+        if self.is_empty() || k == 0 || (entry_point as usize) >= self.nodes.len() {
+            return self.search_with_ef(query, k, ef);
+        }
+        let k = k.min(self.nodes.len());
+        let mut ep = entry_point;
+        for layer in (1..=self.max_layers).rev() {
+            let nearest = self.search_layer(query, ep, 1, layer);
+            ep = nearest[0].1;
+        }
+        let mut results = self.search_layer(query, ep, ef.max(k), 0);
+        results.truncate(k);
+        results.into_iter().map(|(dist, idx)| (dist, idx, self.nodes[idx as usize].tag)).collect()
+    }
+
+    /// Geometry-aware pruning: cut nb only if it is redundant in BOTH hamming
+    /// space AND the PCA-2 sketch plane. Hamming-redundant but geometrically
+    /// diverse edges survive -> deeper cuts at equal recall tax.
+    /// `geo_r` = sketch-distance gate (e.g., RMS radius of the coords).
+    pub fn prune_diverse_geo(&mut self, alpha: f32, layer: usize, sketch: &[f32], geo_r: f32) -> usize {
+        let sd2 = |a: u32, b: u32| -> f32 {
+            let i = a as usize * 2;
+            let j = b as usize * 2;
+            let dx = sketch[i] - sketch[j];
+            let dy = sketch[i + 1] - sketch[j + 1];
+            (dx * dx + dy * dy).sqrt()
+        };
+        let mut removed = 0usize;
+        for idx in 0..self.nodes.len() as u32 {
+            if layer >= self.nodes[idx as usize].num_layers as usize {
+                continue;
+            }
+            let (kept, old_len) = {
+                let node_hash = &self.nodes[idx as usize].hash;
+                let nbs = self.neighbor_ids(idx, layer, true);
+                if nbs.len() <= 2 {
+                    continue;
+                }
+                let mut by_dist: Vec<(u32, u32)> = nbs
+                    .iter()
+                    .map(|&nb| (hamming_distance(node_hash, &self.nodes[nb as usize].hash), nb))
+                    .collect();
+                by_dist.sort_unstable();
+                let mut kept: Vec<u32> = Vec::with_capacity(by_dist.len());
+                for (d, nb) in by_dist {
+                    let nb_hash = &self.nodes[nb as usize].hash;
+                    let redundant = kept.iter().any(|&p| {
+                        (hamming_distance(nb_hash, &self.nodes[p as usize].hash) as f32) < alpha * (d as f32)
+                            && sd2(nb, p) < geo_r
+                    });
+                    if !redundant {
+                        kept.push(nb);
+                    }
+                }
+                (kept, nbs.len())
+            };
+            if kept.len() < old_len {
+                let slot = self.layer_neighbors_mut(idx, layer, true);
+                let n = kept.len().min(slot.len());
+                for (i, &nb) in kept.iter().take(n).enumerate() {
+                    slot[i] = nb;
+                }
+                self.nodes[idx as usize].layer_counts[layer] = n as u8;
+                removed += old_len - n;
+            }
+        }
+        removed
+    }
+
+    /// Append one-way "bridge" edges into freed layer-0 primary slots (nodes
+    /// that were pruned below capacity). `bridge_of(node_idx)` returns the
+    /// bridge target (e.g., its coarse-cell anchor). Returns edges added.
+    pub fn add_bridge_edges<F: Fn(usize) -> u32>(&mut self, n: usize, bridge_of: F) -> usize {
+        let cap = self.max_neighbors_for_layer(0);
+        let mut added = 0usize;
+        for idx in 0..n as u32 {
+            let node = &self.nodes[idx as usize];
+            if node.num_layers == 0 || node.layer_counts[0] as usize >= cap {
+                continue;
+            }
+            let b = bridge_of(idx as usize);
+            if b == u32::MAX || b == idx {
+                continue;
+            }
+            if self.neighbor_ids(idx, 0, true).contains(&b) {
+                continue;
+            }
+            let off = self.layer_offset(idx, 0, true);
+            let cnt = self.nodes[idx as usize].layer_counts[0] as usize;
+            self.arena.owned_mut()[off + cnt] = b;
+            self.nodes[idx as usize].layer_counts[0] += 1;
+            added += 1;
+        }
+        added
+    }
+
+    /// Vamana-style diverse-neighbor pruning (post-build, owned/v4 arenas).
+    /// For each node's primary neighbor list at `layer`: sort neighbors by
+    /// hamming distance to the node, then greedily drop any neighbor whose
+    /// hamming distance to an already-kept neighbor is < alpha * dist(node, nb).
+    /// Fewer redundant edges -> tighter ef-beam -> fewer hops per query.
+    /// Returns the number of edges removed.
+    pub fn prune_diverse(&mut self, alpha: f32, layer: usize, reverse: bool) -> usize {
+        let mut removed = 0usize;
+        for idx in 0..self.nodes.len() as u32 {
+            if layer >= self.nodes[idx as usize].num_layers as usize {
+                continue;
+            }
+            let (kept, old_len) = {
+                let node_hash = &self.nodes[idx as usize].hash;
+                let nbs = self.neighbor_ids(idx, layer, true);
+                if nbs.len() <= 2 {
+                    continue;
+                }
+                let mut by_dist: Vec<(u32, u32)> = nbs
+                    .iter()
+                    .map(|&nb| (hamming_distance(node_hash, &self.nodes[nb as usize].hash), nb))
+                    .collect();
+                if reverse {
+                    // reverse-distance order: longest edges kept first (control for order bias)
+                    by_dist.sort_unstable_by(|a, b| b.0.cmp(&a.0));
+                } else {
+                    by_dist.sort_unstable();
+                }
+                let mut kept: Vec<u32> = Vec::with_capacity(by_dist.len());
+                for (d, nb) in by_dist {
+                    let nb_hash = &self.nodes[nb as usize].hash;
+                    // d==0 (identical ITQ codes): thresh 1 dedupes exact duplicates too
+                    let thresh = if d == 0 { 1u32 } else { (alpha * (d as f32)) as u32 };
+                    let redundant = kept.iter().any(|&p| {
+                        hamming_distance(nb_hash, &self.nodes[p as usize].hash) < thresh
+                    });
+                    if !redundant {
+                        kept.push(nb);
+                    }
+                }
+                (kept, nbs.len())
+            };
+            if kept.len() < old_len {
+                let slot = self.layer_neighbors_mut(idx, layer, true);
+                let n = kept.len().min(slot.len());
+                for (i, &nb) in kept.iter().take(n).enumerate() {
+                    slot[i] = nb;
+                }
+                self.nodes[idx as usize].layer_counts[layer] = n as u8;
+                removed += old_len - n;
+            }
+        }
+        removed
+    }
+
+    /// Diameter-aware adaptive pruning (GLM council design). The naive rule
+    /// cuts long edges preferentially (RHS grows with edge length), destroying
+    /// shortcuts. Here alpha_eff = base_alpha / (dist_ratio + 0.1): short
+    /// (redundant local) edges get a large alpha_eff -> cut aggressively;
+    /// long (shortcut) edges get a small alpha_eff -> protected. A min-degree
+    /// floor guarantees connectivity. Returns edges removed.
+    pub fn prune_diverse_adaptive(&mut self, base_alpha: f32, layer: usize, min_degree: usize) -> usize {
+        let mut removed = 0usize;
+        for idx in 0..self.nodes.len() as u32 {
+            if layer >= self.nodes[idx as usize].num_layers as usize {
+                continue;
+            }
+            let (kept, old_len) = {
+                let node_hash = &self.nodes[idx as usize].hash;
+                let nbs = self.neighbor_ids(idx, layer, true);
+                if nbs.len() <= min_degree.max(2) {
+                    continue;
+                }
+                let mut by_dist: Vec<(u32, u32)> = nbs
+                    .iter()
+                    .map(|&nb| (hamming_distance(node_hash, &self.nodes[nb as usize].hash), nb))
+                    .collect();
+                by_dist.sort_unstable();
+                let median = by_dist[by_dist.len() / 2].0.max(1) as f32;
+                let mut kept: Vec<u32> = Vec::with_capacity(by_dist.len());
+                for (d, nb) in by_dist {
+                    let dist_ratio = (d as f32) / median;
+                    let alpha_eff = base_alpha / (dist_ratio + 0.1);
+                    let nb_hash = &self.nodes[nb as usize].hash;
+                    let redundant = kept.iter().any(|&p| {
+                        (hamming_distance(nb_hash, &self.nodes[p as usize].hash) as f32)
+                            < alpha_eff * (d as f32)
+                    });
+                    if !redundant || kept.len() < min_degree {
+                        kept.push(nb);
+                    }
+                }
+                (kept, nbs.len())
+            };
+            if kept.len() < old_len {
+                let slot = self.layer_neighbors_mut(idx, layer, true);
+                let n = kept.len().min(slot.len());
+                for (i, &nb) in kept.iter().take(n).enumerate() {
+                    slot[i] = nb;
+                }
+                self.nodes[idx as usize].layer_counts[layer] = n as u8;
+                removed += old_len - n;
+            }
+        }
+        removed
+    }
+
+    /// Flat search: skip the upper-layer descent entirely and start the
+    /// layer-0 beam directly from `entry_point` (compass-entry experiment).
+    pub fn search_flat_from(&self, query: &Hash512, k: usize, ef: usize, entry_point: u32) -> Vec<(u32, u32, u8)> {
+        if self.is_empty() || k == 0 || (entry_point as usize) >= self.nodes.len() {
+            return self.search_with_ef(query, k, ef);
+        }
+        let k = k.min(self.nodes.len());
+        let mut results = self.search_layer(query, entry_point, ef.max(k), 0);
+        results.truncate(k);
+        results.into_iter().map(|(dist, idx)| (dist, idx, self.nodes[idx as usize].tag)).collect()
+    }
+
     /// Search starting from `entry_point` instead of the default random entry point.
     /// Mirrors the standard HNSW greedy descent but with a warm-start node.
     pub fn search_from(
@@ -793,13 +1070,14 @@ impl BinaryHNSW {
         layer: usize,
     ) -> Vec<(u32, u32)> {
         let ef = ef.max(1);
+        HOPS.with(|c| c.set(c.get() + 1));
         let mut visited: HashSet<u32> = HashSet::new();
         let mut candidates: alloc::collections::BinaryHeap<Reverse<(u32, u32)>> =
             alloc::collections::BinaryHeap::new();
         let mut found: alloc::collections::BinaryHeap<(u32, u32)> =
             alloc::collections::BinaryHeap::new();
 
-        let ep_dist = hamming_distance(query, &self.nodes[ep as usize].hash);
+        let ep_dist = fused_score(ep, hamming_distance(query, &self.nodes[ep as usize].hash));
         visited.insert(ep);
         candidates.push(Reverse((ep_dist, ep)));
         found.push((ep_dist, ep));
@@ -817,7 +1095,8 @@ impl BinaryHNSW {
                     panic!("search_layer found invalid neighbor {} for node {} layer {} (nodes={})", nb, ci, layer, self.nodes.len());
                 }
                 if visited.insert(nb) {
-                    let nd = hamming_distance(query, &self.nodes[nb as usize].hash);
+                    HOPS.with(|c| c.set(c.get() + 1));
+                    let nd = fused_score(nb, hamming_distance(query, &self.nodes[nb as usize].hash));
                     let should_add = found.len() < ef || nd < found.peek().unwrap().0;
                     if should_add {
                         candidates.push(Reverse((nd, nb)));
@@ -834,7 +1113,7 @@ impl BinaryHNSW {
                     panic!("search_layer found invalid alt neighbor {} for node {} layer {} (nodes={})", nb, ci, layer, self.nodes.len());
                 }
                 if visited.insert(nb) {
-                    let nd = hamming_distance(query, &self.nodes[nb as usize].hash);
+                    let nd = fused_score(nb, hamming_distance(query, &self.nodes[nb as usize].hash));
                     let should_add = found.len() < ef || nd < found.peek().unwrap().0;
                     if should_add {
                         candidates.push(Reverse((nd, nb)));

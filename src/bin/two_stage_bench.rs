@@ -42,12 +42,7 @@ fn load_codes(path: &str, rowbytes: usize) -> Vec<u8> {
 
 #[inline]
 fn l2(a: &[f32], b: &[f32]) -> f32 {
-    let mut s = 0f32;
-    for i in 0..a.len() {
-        let d = a[i] - b[i];
-        s += d * d;
-    }
-    s
+    pams::simd_kernels::l2_sq_f32(a, b)
 }
 
 #[inline]
@@ -132,11 +127,12 @@ fn main() {
         lat.sort_unstable();
         let p50 = lat[nq / 2] as f64;
         let p95 = lat[nq * 95 / 100] as f64;
+        let p99 = lat[(nq as f64 * 0.99) as usize] as f64;
         let qps = 1e6 / (lat.iter().map(|&x| x as f64).sum::<f64>() / nq as f64);
         eprintln!("ef={ef} K={k}: recall={:.4} p50={:.1}us QPS={:.0}", recall / nq as f64, p50, qps);
         results.push(format!(
-            "{{\"ef\":{ef},\"K\":{k},\"recall_at_10\":{:.6},\"p50_us\":{:.2},\"p95_us\":{:.2},\"qps\":{:.1}}}",
-            recall / nq as f64, p50, p95, qps));
+            "{{\"ef\":{ef},\"K\":{k},\"recall_at_10\":{:.6},\"p50_us\":{:.2},\"p95_us\":{:.2},\"p99_us\":{:.2},\"qps\":{:.1}}}",
+            recall / nq as f64, p50, p95, p99, qps));
     }
 
     let out = format!("{{\"n_queries\":{nq},\"n_vecs\":{n_vecs},\"three_stage\":{},\"points\":[{}]}}",
