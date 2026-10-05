@@ -12,7 +12,7 @@ Both PR algorithm images (binary/hybrid + int8) built from public ingredients on
 and validated in-container on the harness metric: hybrid CONDITIONAL 0.9870 @ 200k
 subset, int8 CONDITIONAL 0.9939 @ 100k subset (assertions > 0.90). Details:
 results/2026-10-05_docker_validation.md. Submission package is Docker-proven;
-PR awaits user GO.
+ann-benchmarks PR #640 SUBMITTED 2026-10-05 (hybrid m12/m16/m24 + binary; int8 held pending 1M revalidation; hamming class unbuilt).
 
 ### Fixed — x86_64 build of the int8 SIMD kernels (2026-10-05)
 
