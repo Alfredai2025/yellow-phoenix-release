@@ -6,6 +6,20 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added — CCEP prune, T7 gateway, T6 fusion (measured null), int8_server (2026-10-05)
+
+- `I8Hnsw::prune_diverse_ccep`: council-suggested sole-inter-cell-edge preservation.
+  Measured (ef128/K200): 0.9901 recall @ 960 QPS vs plain prune 0.9863@1024 vs base 0.9919@886 —
+  best frontier trade. SHIPPED.
+- `use_gateway` + `rebuild_gateways`: T7 cell-gateway entry (per-cell min code-norm node,
+  entry via query's own coarse cell). Measured: -5% latency @ef128, recall identical. SHIPPED.
+- T6 sketch fusion (`attach_sketch`, `fused_score*`, `search_with_ef_fused`): P2 = PCA-2 of int8
+  codes, fixed-point (d<<6 | sketch6) lazy near-tie admission. Measured: +0.0003 recall at -4%
+  speed = below kill threshold -> NOT in ship config (code retained, off by default).
+- `int8_server` bin: persistent ann-benchmarks query protocol (512B f32 in / 80B ids out),
+  prune/gateway/ccep flags. Protocol-validated vs bench (0.9940 on 100q subset).
+
+
 ### Added — ANN campaign engines and overlays (2026-10-05, all measurements SIFT-1M 10k queries, M3 Pro)
 
 **Int8Hnsw engine (new, fifth benchmark candidate: `yellow-phoenix-int8`):**

@@ -37,8 +37,19 @@ fn main() {
     let alpha: f32 = a.get(8).and_then(|s| s.parse().ok()).unwrap_or(0.0);
     if std::env::var("I8_PRE").is_ok() { g.pre_centered = true; eprintln!("PRE-CENTERED distance mode"); }
     if std::env::var("I8_GATEWAY").is_ok() { g.use_gateway = true; eprintln!("T7 cell-gateway entry mode"); }
+    let mut p2: Option<[f32; 256]> = None;
+    if let Ok(path) = std::env::var("I8_P2") {
+        let raw = load_f32(&path);
+        assert!(raw.len() >= 256, "P2 file");
+        let mut arr = [0f32; 256];
+        arr.copy_from_slice(&raw[..256]);
+        g.attach_sketch(&arr);
+        p2 = Some(arr);
+        eprintln!("T6 sketch fusion attached");
+    }
+    let sk_shift: u32 = std::env::var("I6_SHIFT").ok().and_then(|v| v.parse().ok()).unwrap_or(18);
     if alpha > 0.0 {
-        let removed = g.prune_diverse(alpha);
+        let removed = if std::env::var("I8_CCEP").is_ok() { g.prune_diverse_ccep(alpha) } else { g.prune_diverse(alpha) };
         eprintln!("int8 prune alpha={}: removed {} edges", alpha, removed);
         if let Some(p) = a.get(9) { if !p.is_empty() { g.save(p).expect("save"); eprintln!("saved {}", p); } }
     }
@@ -55,7 +66,7 @@ fn main() {
         let q = &qf[i * 128..(i + 1) * 128];
         let t0 = std::time::Instant::now();
         let mut ctx = g.encode_query(q);
-        let top = g.search_with_ef(&mut ctx, k, ef);
+        let top = g.search_with_ef_fused(&mut ctx, k, ef, &p2, sk_shift);
         let cand: Vec<u64> = top.iter().map(|&(_, idx)| g.node_label(idx)).collect();
         if presence_mode {
             presence += cand.iter().filter(|id| gt[i].contains(id)).count() as f64 / 10.0;

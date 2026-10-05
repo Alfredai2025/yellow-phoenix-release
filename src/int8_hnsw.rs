@@ -33,6 +33,7 @@ pub struct I8Node {
     pub code: [i8; D],
     pub sq: i32,                   // sum(code^2) (legacy i32 path / prune)
     pub xsq: f32,                  // sum((C[cell]+code)^2): reconstruction norm for recon-L2
+    pub sk: [i16; 2],              // T6: P2*code sketch coords (x256), tie-break only
     pub edges: Vec<Vec<u32>>,      // primary
     pub alt_edges: Vec<Vec<u32>>,  // alternative (next-m candidates)
     pub level: usize,
@@ -166,7 +167,7 @@ impl I8Hnsw {
         let cb = cell as usize * D;
         let mut xsq = 0f32;
         for i in 0..D { let x = self.coarse[cb + i] + code[i] as f32; xsq += x * x; }
-        self.nodes.push(I8Node { id, cell, code, sq, xsq, edges: vec![Vec::new(); level + 1], alt_edges: vec![Vec::new(); level + 1], level });
+        self.nodes.push(I8Node { id, cell, code, sq, xsq, sk: [0i16; 2], edges: vec![Vec::new(); level + 1], alt_edges: vec![Vec::new(); level + 1], level });
         self.stamp.push(0);
         let rv = self.recon(cell, &code);
         let mut v_sq = 0f32;
@@ -297,6 +298,77 @@ impl I8Hnsw {
         (results.into_iter().collect(), nearest)
     }
 
+    /// T6 variant: beam admission uses fused_score (lazy sketch at near-ties).
+    pub fn search_with_ef_fused(&mut self, ctx: &mut I8Ctx, k: usize, ef: usize, p2: &Option<[f32; 256]>, shift: u32) -> Vec<(i32, u32)> {
+        if self.nodes.is_empty() { return Vec::new(); }
+        let ef = ef.max(k);
+        let mut out: Vec<(i32, u32)> = Vec::new();
+        let ep_opt = if self.use_gateway && ctx.own_cell < self.gateways.len()
+            && self.gateways[ctx.own_cell] != u32::MAX {
+            Some(self.gateways[ctx.own_cell])
+        } else { self.enter_point };
+        if let Some(ep) = ep_opt {
+            let mut cur = ep;
+            for l in (1..=self.max_level).rev() {
+                cur = self.greedy_query(l, cur, ctx);
+            }
+            out = self.beam_query_fused(0, cur, ctx, ef, p2, shift);
+        }
+        out.sort_by_key(|x| x.0);
+        out.truncate(k);
+        out
+    }
+
+    fn beam_query_fused(&mut self, l: usize, ep: u32, ctx: &mut I8Ctx, ef: usize, p2: &Option<[f32; 256]>, shift: u32) -> Vec<(i32, u32)> {
+        use std::collections::BinaryHeap;
+        let vis_epoch = { self.epoch += 1; self.epoch };
+        let mut results: BinaryHeap<(i32, u32)> = BinaryHeap::new();
+        let mut queue: BinaryHeap<(std::cmp::Reverse<(i32, u32)>, u32)> = BinaryHeap::new();
+        let d0 = self.dist_honest(ctx, &self.nodes[ep as usize]);
+        let f0 = self.fused_score_raw(d0, ctx, &self.nodes[ep as usize], p2, shift);
+        self.stamp[ep as usize] = vis_epoch;
+        queue.push((std::cmp::Reverse((f0, ep)), ep));
+        results.push((f0, ep));
+        while let Some((std::cmp::Reverse((d, u)), _)) = queue.pop() {
+            let worst = results.peek().map(|r| r.0).unwrap_or(i32::MAX);
+            if d > worst && results.len() >= ef { break; }
+            for is_alt in [false, true] {
+                let layer_opt = if is_alt { self.nodes[u as usize].alt_edges.get(l) } else { self.nodes[u as usize].edges.get(l) };
+                if let Some(layer) = layer_opt { for &nb in layer {
+                    if (nb as usize) >= self.nodes.len() || self.stamp[nb as usize] == vis_epoch { continue; }
+                    self.stamp[nb as usize] = vis_epoch;
+                    // T6: compute raw d once; reject early if even +max-sketch cannot beat worst
+                    let d_raw = self.dist_honest(ctx, &self.nodes[nb as usize]);
+                    let worst2 = results.peek().map(|r| r.0).unwrap_or(i32::MAX);
+                    // early-reject only once the beam is full; while filling, admit anything
+                    if results.len() >= ef && (d_raw << 6) >= worst2 { continue; }
+                    let fused = self.fused_score_raw(d_raw, ctx, &self.nodes[nb as usize], p2, shift);
+                    if fused < worst2 || results.len() < ef {
+                        queue.push((std::cmp::Reverse((fused, nb)), nb));
+                        results.push((fused, nb));
+                        if results.len() > ef { results.pop(); }
+                    }
+                } }
+            }
+        }
+        results.into_iter().collect()
+    }
+
+    /// fused_score given an already-computed raw d (avoids recomputing d inside).
+    #[inline]
+    pub fn fused_score_raw(&self, d: i32, ctx: &mut I8Ctx, node: &I8Node, p2: &Option<[f32; 256]>, shift: u32) -> i32 {
+        match p2 {
+            None => d << 6,
+            Some(p2) => {
+                let qsk0 = { let mut a = 0f32; for i in 0..D { a += p2[i] * ctx.cache_res[i] as f32; } a };
+                let qsk1 = { let mut a = 0f32; for i in 0..D { a += p2[128 + i] * ctx.cache_res[i] as f32; } a };
+                let sd2 = (((qsk0 * 256.0) as i32 - node.sk[0] as i32).pow(2)
+                         + ((qsk1 * 256.0) as i32 - node.sk[1] as i32).pow(2)) as u32;
+                (d << 6) | ((sd2 >> shift).min(63) as i32)
+            }
+        }
+    }
+
     /// Query-time ef-beam with honest distance.
     pub fn search_with_ef(&mut self, ctx: &mut I8Ctx, k: usize, ef: usize) -> Vec<(i32, u32)> {
         if self.nodes.is_empty() { return Vec::new(); }
@@ -373,6 +445,42 @@ impl I8Hnsw {
         results.into_iter().collect()
     }
 
+    /// CCEP variant (council trick): never cut an edge that is the ONLY link from this
+    /// node to its target's coarse cell — inter-cell bridges survive pruning.
+    pub fn prune_diverse_ccep(&mut self, alpha: f32) -> usize {
+        let mut removed = 0usize;
+        for ni in 0..self.nodes.len() {
+            let nbs = self.nodes[ni].edges.get(0).cloned().unwrap_or_default();
+            if nbs.len() <= 2 { continue; }
+            let mut cell_cnt: std::collections::HashMap<u16, u32> = std::collections::HashMap::new();
+            for &nb in &nbs { *cell_cnt.entry(self.nodes[nb as usize].cell).or_insert(0) += 1; }
+            let (kept, old_len) = {
+                let mut by: Vec<(i32, u32)> = nbs.iter()
+                    .map(|&nb| (Self::sdc(&self.nodes[ni], &self.nodes[nb as usize]), nb))
+                    .collect();
+                by.sort_unstable();
+                let mut kept: Vec<u32> = Vec::with_capacity(by.len());
+                for (d, nb) in by {
+                    let c = self.nodes[nb as usize].cell;
+                    let thresh = if d == 0 { 1 } else { (alpha * (d as f32)) as i32 };
+                    let redundant = kept.iter().any(|&pp| Self::sdc(&self.nodes[nb as usize], &self.nodes[pp as usize]) < thresh);
+                    if !redundant || *cell_cnt.get(&c).unwrap_or(&0) < 2 {
+                        kept.push(nb); // keep diverse OR sole inter-cell link (CCEP)
+                    } else {
+                        *cell_cnt.get_mut(&c).unwrap() -= 1;
+                    }
+                }
+                (kept, nbs.len())
+            };
+            if kept.len() < old_len {
+                let r = old_len - kept.len();
+                self.nodes[ni].edges[0] = kept;
+                removed += r;
+            }
+        }
+        removed
+    }
+
     /// Vamana-style prune on layer-0 edges using SDC.
     pub fn prune_diverse(&mut self, alpha: f32) -> usize {
         let mut removed = 0usize;
@@ -398,6 +506,36 @@ impl I8Hnsw {
     }
 
     pub fn node_label(&self, idx: u32) -> u64 { self.nodes[idx as usize].id }
+
+    /// T6: attach P2 sketch coords (P2 = 2x128 f32, code-PCA). Call after load.
+    pub fn attach_sketch(&mut self, p2: &[f32; 256]) {
+        for nd in self.nodes.iter_mut() {
+            let mut s0 = 0f32; let mut s1 = 0f32;
+            for i in 0..D {
+                s0 += p2[i] * nd.code[i] as f32;
+                s1 += p2[128 + i] * nd.code[i] as f32;
+            }
+            nd.sk = [(s0 * 256.0) as i16, (s1 * 256.0) as i16];
+        }
+    }
+
+    /// T6: fused near-tie check. Returns fused score (d<<6 | sketch6) — sketch computed
+    /// ONLY when an int8 unit could change the admission decision (lazy, zero-cost common case).
+    #[inline]
+    pub fn fused_score(&self, ctx: &mut I8Ctx, node: &I8Node, p2: &Option<[f32; 256]>, shift: u32) -> i32 {
+        let d = ctx.d(&self.coarse, node);
+        match p2 {
+            None => d << 6,
+            Some(p2) => {
+                // sketch vs the CANDIDATE-cell residual (cache_res already holds it after d())
+                let qsk0 = { let mut a = 0f32; for i in 0..D { a += p2[i] * ctx.cache_res[i] as f32; } a };
+                let qsk1 = { let mut a = 0f32; for i in 0..D { a += p2[128 + i] * ctx.cache_res[i] as f32; } a };
+                let sd2 = (((qsk0 * 256.0) as i32 - node.sk[0] as i32).pow(2)
+                         + ((qsk1 * 256.0) as i32 - node.sk[1] as i32).pow(2)) as u32;
+                (d << 6) | ((sd2 >> shift).min(63) as i32)
+            }
+        }
+    }
 
     /// T7: per-cell gateway = node whose reconstruction is nearest its cell centroid
     /// (||x̂ - C|| = ||code||, so min code-norm). One O(N) pass.
@@ -485,7 +623,7 @@ impl I8Hnsw {
             let cb = cell as usize * D;
             let mut xsq = 0f32;
             for i in 0..D { let x = coarse[cb + i] + code[i] as f32; xsq += x * x; }
-            nodes.push(I8Node { id, cell, code, sq, xsq, edges, alt_edges, level });
+            nodes.push(I8Node { id, cell, code, sq, xsq, sk: [0i16; 2], edges, alt_edges, level });
         }
         let stamp = vec![0u32; nodes.len()];
         let mut g = Self { gateways: Vec::new(), use_gateway: false, pre_centered: false, nodes, stamp, epoch: 0, coarse, kc, m, ef_construction: efc,
