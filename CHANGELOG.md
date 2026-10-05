@@ -6,6 +6,14 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added — ANN-benchmarks Docker validation passed (2026-10-05)
+
+Both PR algorithm images (binary/hybrid + int8) built from public ingredients only
+and validated in-container on the harness metric: hybrid CONDITIONAL 0.9870 @ 200k
+subset, int8 CONDITIONAL 0.9939 @ 100k subset (assertions > 0.90). Details:
+results/2026-10-05_docker_validation.md. Submission package is Docker-proven;
+PR awaits user GO.
+
 ### Fixed — x86_64 build of the int8 SIMD kernels (2026-10-05)
 
 `is_x86_64_feature_detected!` -> `is_x86_feature_detected!` (macro name), duplicate
