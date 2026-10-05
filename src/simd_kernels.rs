@@ -367,8 +367,8 @@ fn have_avx2_fma() -> bool {
     use std::sync::OnceLock;
     static OK: OnceLock<bool> = OnceLock::new();
     *OK.get_or_init(|| {
-        std::arch::is_x86_64_feature_detected!("avx2")
-            && std::arch::is_x86_64_feature_detected!("fma")
+        std::arch::is_x86_feature_detected!("avx2")
+            && std::arch::is_x86_feature_detected!("fma")
     })
 }
 
@@ -510,7 +510,8 @@ pub fn encode512(qm: &[f32; 128], wt: &[[f32; 128]; 512]) -> [u8; 64] {
 pub fn i8_dot_128(a: &[i8; 128], b: &[i8; 128]) -> i32 {
     #[cfg(target_arch = "x86_64")]
     {
-        if std::arch::is_x86_feature_detected!("avx2") {
+        if std::env::var_os("I8_NOSIMD").is_none()
+            && std::arch::is_x86_feature_detected!("avx2") {
             return unsafe { avx2_i8_dot_128(a, b) };
         }
     }
@@ -601,21 +602,6 @@ pub fn f32_i8_dot_128(v: &[f32; 128], c: &[i8; 128]) -> f32 {
     f32_i8_dot_128_scalar(v, c)
 }
 
-#[cfg(target_arch = "x86_64")]
-unsafe fn avx2_f32_i8_dot_128(v: &[f32; 128], c: &[i8; 128]) -> f32 {
-    use std::arch::x86_64::*;
-    let mut acc = _mm256_setzero_ps();
-    for chunk in 0..4 {
-        let off = chunk * 32;
-        let vv = _mm256_loadu_ps(v[off..].as_ptr());
-        let cc8 = _mm_loadu_si128(c[off..].as_ptr() as *const __m128i);
-        let cc32 = _mm256_cvtepi32_ps(_mm256_cvtepi8_epi32(cc8));
-        acc = _mm256_fmadd_ps(vv, cc32, acc);
-    }
-    let mut lanes = [0f32; 8];
-    _mm256_storeu_ps(lanes.as_mut_ptr() as *mut __m256i, acc);
-    lanes.iter().sum()
-}
 
 #[cfg(target_arch = "aarch64")]
 unsafe fn neon_f32_i8_dot_128(v: &[f32; 128], c: &[i8; 128]) -> f32 {
@@ -637,6 +623,7 @@ unsafe fn neon_f32_i8_dot_128(v: &[f32; 128], c: &[i8; 128]) -> f32 {
 }
 
 #[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx2", enable = "fma", enable = "sse3")]
 unsafe fn avx2_f32_i8_dot_128(v: &[f32; 128], c: &[i8; 128]) -> f32 {
     use std::arch::x86_64::*;
     let mut acc = _mm256_setzero_ps();

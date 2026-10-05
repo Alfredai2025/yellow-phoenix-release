@@ -6,6 +6,16 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed — x86_64 build of the int8 SIMD kernels (2026-10-05)
+
+`is_x86_64_feature_detected!` -> `is_x86_feature_detected!` (macro name), duplicate
+`avx2_f32_i8_dot_128` definition removed (splice overlap), `#[target_feature(enable =
+"avx2,fma,sse3")]` added for the fmadd/hadd intrinsics. All three were invisible on the
+aarch64 dev machine; caught by the x86 droplet build. Droplet (Ubuntu 22.04, Xeon-class):
+clean release build of int8_bench + build_int8_graph + int8_server with the public benchmark
+phrase.
+
+
 ### Added — CCEP prune, T7 gateway, T6 fusion (measured null), int8_server (2026-10-05)
 
 - `I8Hnsw::prune_diverse_ccep`: council-suggested sole-inter-cell-edge preservation.
