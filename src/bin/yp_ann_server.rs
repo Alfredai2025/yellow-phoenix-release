@@ -41,12 +41,14 @@ fn main() {
     let graph = BinaryHNSW::load(&a[1]).expect("load graph");
     let payload = load_f32(&a[2]);
     let w = load_f32(&a[3]);           // 128 x 512 fused, d-major as stored
-    let mu = load_f32(&a[4]);          // 128
+    let mu = load_f32(&a[4]);          // d floats (input dimension)
+    let d = mu.len();
     let ef: usize = a.get(5).and_then(|s| s.parse().ok()).unwrap_or(128);
     let k: usize = a.get(6).and_then(|s| s.parse().ok()).unwrap_or(200);
     let raw_mode = a.iter().any(|s| s == "--mode" ) && a.iter().any(|s| s == "raw");
     // funnel: --funnel <books.bin> <codes.bin> <V.f32> <mu.f32> <narrow_to>
     let funnel = a.iter().position(|s| s == "--funnel").map(|p| {
+        assert!(d == 128, "funnel path is 128-d only");
         let books = load_pq_books(&a[p + 1]);
         let (n_codes, nb, codes) = load_pq_codes(&a[p + 2]);
         let vf = load_f32_exact(&a[p + 3], 128 * 128);
@@ -58,24 +60,28 @@ fn main() {
         assert!(*nc * 128 == payload.len() as u64 && b.0 == *nb, "funnel artifact mismatch");
         eprintln!("funnel: {} blocks, narrow to {}", b.0, nw);
     }
-    assert!(w.len() == 128 * 512 && mu.len() == 128, "W/mu shape");
-    // transpose W to 512 x 128 (bit-major): each bit's dot product is one
-    // contiguous 128-f32 row — cache- and SIMD-friendly for encode512
-    let mut wt: Box<[[f32; 128]; 512]> = Box::new([[0f32; 128]; 512]);
-    for d in 0..128 {
-        for b in 0..512 {
-            wt[b][d] = w[d * 512 + b];
+    assert!(w.len() == d * 512, "W/mu shape");
+    // transpose W to bit-major rows for the 128-wide SIMD kernel (kept for the
+    // original 128-d path); generic d uses a plain per-bit dot below.
+    let wt128: Option<Box<[[f32; 128]; 512]>> = if d == 128 {
+        let mut wt: Box<[[f32; 128]; 512]> = Box::new([[0f32; 128]; 512]);
+        for dd in 0..128 {
+            for b in 0..512 {
+                wt[b][dd] = w[dd * 512 + b];
+            }
         }
-    }
-    let wt = wt;
-    eprintln!("yp_ann_server ready: ef={ef} K={k} raw={raw_mode}, payload {} vecs", payload.len()/128);
+        Some(wt)
+    } else { None };
+    // generic bit-major W for any d
+    let wtg: Vec<Vec<f32>> = (0..512).map(|b| (0..d).map(|dd| w[dd * 512 + b]).collect()).collect();
+    eprintln!("yp_ann_server ready: ef={ef} K={k} raw={raw_mode} d={d}, payload {} vecs", payload.len()/d);
 
     let stdin = std::io::stdin();
     let stdout = std::io::stdout();
     let mut inp = stdin.lock();
     let mut out = stdout.lock();
-    let mut q = [0f32; 128];
-    let mut qb = [0u8; 512];
+    let mut q = vec![0f32; d];
+    let mut qb = vec![0u8; d * 4];
     let mut code_in = [0u8; HASH512_BYTES];
     loop {
         let code: [u8; HASH512_BYTES] = if raw_mode {
@@ -83,11 +89,22 @@ fn main() {
             code_in
         } else {
             if inp.read_exact(&mut qb).is_err() { break; }
-            for i in 0..128 { q[i] = f32::from_le_bytes(qb[i*4..i*4+4].try_into().unwrap()); }
-            // encode: (q - mu) @ W via transposed W, SIMD dot per bit
-            let mut qm = [0f32; 128];
-            for d in 0..128 { qm[d] = q[d] - mu[d]; }
-            pams::simd_kernels::encode512(&qm, &wt)
+            for i in 0..d { q[i] = f32::from_le_bytes(qb[i*4..i*4+4].try_into().unwrap()); }
+            // encode: (q - mu) @ W
+            let mut qm = vec![0f32; d];
+            for dd in 0..d { qm[dd] = q[dd] - mu[dd]; }
+            if let Some(wt) = &wt128 {
+                let qm_arr: [f32; 128] = qm.try_into().unwrap();
+                pams::simd_kernels::encode512(&qm_arr, wt)
+            } else {
+                let mut bits = [0u8; HASH512_BYTES];
+                for (b, row) in wtg.iter().enumerate() {
+                    let mut s = 0f32;
+                    for dd in 0..d { s += qm[dd] * row[dd]; }
+                    if s >= 0.0 { bits[b / 8] |= 1 << (7 - (b % 8)); }  // MSB-first: matches numpy.packbits
+                }
+                bits
+            }
         };
         let top = graph.search_with_ef(&code, k, ef);
         let mut cand: Vec<u64> = top.iter().map(|(_, idx, _)| graph.node_label(*idx)).collect();
@@ -130,7 +147,7 @@ fn main() {
             cand.into_iter().take(10).collect()
         } else {
             let mut best: Vec<(f32, u64)> = cand.iter()
-                .map(|&id| (pams::simd_kernels::l2_sq_f32(&payload[id as usize * 128..id as usize * 128 + 128], &q), id))
+                .map(|&id| (pams::simd_kernels::l2_sq_f32(&payload[id as usize * d..id as usize * d + d], &q), id))
                 .collect();
             best.sort_by(|x, y| x.0.partial_cmp(&y.0).unwrap());
             best.truncate(10);
