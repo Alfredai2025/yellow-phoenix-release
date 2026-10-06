@@ -6,6 +6,33 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added — M1 memory discipline + M2 ADC ranker campaign (2026-10-06)
+
+Single-thread SIFT-1M engine, one evening, all points re-measured (10k queries,
+artifacts ~/yp_ann/data/m1_* and m2_*.json):
+- **M1** `search_layer`: thread-local reuse of visited-set + candidate/found heaps
+  (was 3 heap allocs per layer visit per query), `prfm`/`_mm_prefetch` neighbor
+  prefetch, slice-based neighbor scan (was to_vec per node). Recall bit-identical
+  at all 8 points; QPS +22-42% (7120->10121 at the speed end).
+- **M2** PQ4-ADC stage-2 ranker (`src/bin/fastscan_rank_bench.rs`): graph proposes
+  -> PQ4 ADC ranks -> exact float verify. New verified Pareto: 0.8344@6660 (K100)
+  ... 0.9794@1636 (K500) ... 0.9920@893 (K1000, verify-100). Morning champion was
+  0.9202@1522. Graph reach ceiling proven 0.9973 (float-verify-all test); codec
+  no longer binds at 48B. Multi-probe (search_with_ef_from + union): 2xef150 =
+  0.9093@2704, a new Pareto point; >2 probes overlap wastefully.
+- `src/bin/fastscan_bench.rs`: 4-bit PQ fast-scan NEON kernel (zero copied code;
+  Andre 2016/faiss-MIT mechanics re-implemented, ScaNN residual patents avoided).
+  376M dist/sec DRAM-bound vs 20M gate. IP hygiene per council review.
+- Codec probes (~/yp_ann): plain-RQ FAILED 0.6322@33B; QINCo FAILED 0.0994@16B
+  (genuinely bad model, mismatch ruled out); PQ4 flat ceilings 32B=0.6214,
+  OPQ-32B=0.6307, 48B=0.7196, 64B=0.8757 (in-engine wash at K<=1000 — graph binds).
+
+### Added — yp_ann_server generic input dimension (2026-10-06)
+
+Server now accepts any input dim d (mu length defines it); 128-d keeps the
+bit-major transposed SIMD path, other d use a generic per-bit dot. Motivated by
+Yahoo-384 ITQ-hybrid measured 0.9830 recall@10 @671k (single config/thread, this build).
+
 ### Added — ANN-benchmarks Docker validation passed (2026-10-05)
 
 Both PR algorithm images (binary/hybrid + int8) built from public ingredients only

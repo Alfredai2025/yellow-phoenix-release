@@ -29,9 +29,43 @@ pub type Hash512 = [u8; 64];
 /// Number of bytes in a 512-bit hash.
 pub const HASH512_BYTES: usize = 64;
 
+/// Software prefetch hint for the query hot path (M1 memory discipline).
+#[inline(always)]
+fn prefetch_read<T>(ptr: *const T) {
+    #[cfg(target_arch = "aarch64")]
+    // `_prefetch` intrinsic is still unstable (rust#117217); `prfm pldl1keep`
+    // is the identical instruction via stable inline asm.
+    unsafe {
+        core::arch::asm!(
+            "prfm pldl1keep, [{0}]",
+            in(reg) ptr,
+            options(nostack, preserves_flags)
+        )
+    }
+    #[cfg(target_arch = "x86_64")]
+    unsafe {
+        core::arch::x86_64::_mm_prefetch(
+            ptr.cast::<core::ffi::c_char>(),
+            core::arch::x86_64::_MM_HINT_T0,
+        )
+    }
+}
+
 thread_local! {
     /// Query-side hop counter (nodes visited per search_layer call); read by benches.
     pub static HOPS: std::cell::Cell<u64> = std::cell::Cell::new(0);
+    /// M1 memory discipline: reused per-query search buffers (visited set +
+    /// candidate/found heaps). Avoids three heap allocations per layer visit;
+    /// `clear()` retains capacity across queries.
+    static LAYER_SCRATCH: std::cell::RefCell<(
+        hashbrown::HashSet<u32>,
+        alloc::collections::BinaryHeap<Reverse<(u32, u32)>>,
+        alloc::collections::BinaryHeap<(u32, u32)>,
+    )> = std::cell::RefCell::new((
+        hashbrown::HashSet::new(),
+        alloc::collections::BinaryHeap::new(),
+        alloc::collections::BinaryHeap::new(),
+    ));
     /// In-graph fusion state, integer fast path. FSKETCH = raw ptr to leaked
     /// [i32; 2*n] fixed-point sketch coords; FDEN = 0 disables fusion.
     static FSKETCH: std::cell::Cell<*const i32> = const { std::cell::Cell::new(std::ptr::null()) };
@@ -1071,64 +1105,83 @@ impl BinaryHNSW {
     ) -> Vec<(u32, u32)> {
         let ef = ef.max(1);
         HOPS.with(|c| c.set(c.get() + 1));
-        let mut visited: HashSet<u32> = HashSet::new();
-        let mut candidates: alloc::collections::BinaryHeap<Reverse<(u32, u32)>> =
-            alloc::collections::BinaryHeap::new();
-        let mut found: alloc::collections::BinaryHeap<(u32, u32)> =
-            alloc::collections::BinaryHeap::new();
+        LAYER_SCRATCH.with(|scratch| {
+            let mut scratch = scratch.borrow_mut();
+            let (visited, candidates, found) = &mut *scratch;
+            visited.clear();
+            candidates.clear();
+            found.clear();
 
-        let ep_dist = fused_score(ep, hamming_distance(query, &self.nodes[ep as usize].hash));
-        visited.insert(ep);
-        candidates.push(Reverse((ep_dist, ep)));
-        found.push((ep_dist, ep));
+            let ep_dist = fused_score(ep, hamming_distance(query, &self.nodes[ep as usize].hash));
+            visited.insert(ep);
+            candidates.push(Reverse((ep_dist, ep)));
+            found.push((ep_dist, ep));
 
-        while let Some(Reverse((cd, ci))) = candidates.pop() {
-            if found.len() >= ef {
-                let worst = found.peek().unwrap().0;
-                if cd > worst {
-                    break;
-                }
-            }
-
-            for nb in self.neighbor_ids(ci, layer, /*primary=*/true) {
-                if (nb as usize) >= self.nodes.len() {
-                    panic!("search_layer found invalid neighbor {} for node {} layer {} (nodes={})", nb, ci, layer, self.nodes.len());
-                }
-                if visited.insert(nb) {
-                    HOPS.with(|c| c.set(c.get() + 1));
-                    let nd = fused_score(nb, hamming_distance(query, &self.nodes[nb as usize].hash));
-                    let should_add = found.len() < ef || nd < found.peek().unwrap().0;
-                    if should_add {
-                        candidates.push(Reverse((nd, nb)));
-                        found.push((nd, nb));
-                        if found.len() > ef {
-                            found.pop();
+            // Shared per-neighbor scan. `count_hops` preserves the original
+            // HOPS semantics (primary edges only). First pass issues software
+            // prefetches for the node lines we are about to touch (M1).
+            let scan =
+                |nbs: &[u32],
+                 count_hops: bool,
+                 visited: &mut hashbrown::HashSet<u32>,
+                 candidates: &mut alloc::collections::BinaryHeap<Reverse<(u32, u32)>>,
+                 found: &mut alloc::collections::BinaryHeap<(u32, u32)>| {
+                    for &nb in nbs {
+                        prefetch_read(&self.nodes[nb as usize] as *const BinaryNode);
+                    }
+                    for &nb in nbs {
+                        if (nb as usize) >= self.nodes.len() {
+                            panic!("search_layer found invalid neighbor {} (nodes={})", nb, self.nodes.len());
                         }
+                        if visited.insert(nb) {
+                            if count_hops {
+                                HOPS.with(|c| c.set(c.get() + 1));
+                            }
+                            let nd = fused_score(
+                                nb,
+                                hamming_distance(query, &self.nodes[nb as usize].hash),
+                            );
+                            let should_add = found.len() < ef || nd < found.peek().unwrap().0;
+                            if should_add {
+                                candidates.push(Reverse((nd, nb)));
+                                found.push((nd, nb));
+                                if found.len() > ef {
+                                    found.pop();
+                                }
+                            }
+                        }
+                    }
+                };
+
+            while let Some(Reverse((cd, ci))) = candidates.pop() {
+                if found.len() >= ef {
+                    let worst = found.peek().unwrap().0;
+                    if cd > worst {
+                        break;
+                    }
+                }
+
+                match &self.arena {
+                    Arena::Owned(_) => {
+                        let nbs = self.layer_neighbors(ci, layer, /*primary=*/true);
+                        scan(nbs, true, visited, candidates, found);
+                        // Also probe alternative edges to increase effective branching.
+                        let nbs = self.layer_neighbors(ci, layer, /*primary=*/false);
+                        scan(nbs, false, visited, candidates, found);
+                    }
+                    Arena::Mapped(_) => {
+                        let nbs = self.mapped_neighbor_ids(ci, layer, /*primary=*/true);
+                        scan(&nbs, true, visited, candidates, found);
+                        let nbs = self.mapped_neighbor_ids(ci, layer, /*primary=*/false);
+                        scan(&nbs, false, visited, candidates, found);
                     }
                 }
             }
-            // Also probe alternative edges to increase effective branching.
-            for nb in self.neighbor_ids(ci, layer, /*primary=*/false) {
-                if (nb as usize) >= self.nodes.len() {
-                    panic!("search_layer found invalid alt neighbor {} for node {} layer {} (nodes={})", nb, ci, layer, self.nodes.len());
-                }
-                if visited.insert(nb) {
-                    let nd = fused_score(nb, hamming_distance(query, &self.nodes[nb as usize].hash));
-                    let should_add = found.len() < ef || nd < found.peek().unwrap().0;
-                    if should_add {
-                        candidates.push(Reverse((nd, nb)));
-                        found.push((nd, nb));
-                        if found.len() > ef {
-                            found.pop();
-                        }
-                    }
-                }
-            }
-        }
 
-        let mut results: Vec<(u32, u32)> = found.into_iter().collect();
-        results.sort_by_key(|x| x.0);
-        results
+            let mut results: Vec<(u32, u32)> = found.drain().collect();
+            results.sort_by_key(|x| x.0);
+            results
+        })
     }
 
     /// Select the `m` closest candidates from a sorted candidate list.
