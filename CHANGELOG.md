@@ -6,6 +6,25 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added — 10M-scale codec duel vs Google RSLM (2026-10-07)
+
+All measurements ~/yp_ann (council-audited code, brute-force reproduced):
+- **Yandex T2I-10M ladder (ours, Path 1 per-dim kmeans)**: 1..8 bits/dim,
+  dual ruler per depth. Engine ruler (w10k shortlist + exact rescore):
+  0.9520@25B, 0.9976@50B, **1.0000@75B and up**. Flat ruler at 10M is a
+  lottery (0.13..0.98) — the two-ruler contrast is the measurement result.
+- **Vendor fair fight** (google-research/rslm, Apache-2.0 vendored, cited):
+  their reference implementation under our identical ruler. GloVe sweep:
+  our pipeline + their three tricks (FWHT/EVT/norm-fix) **wins all 4 depths
+  at matched bytes** (e.g. 27B: 0.5675 vs Rslm2 0.5555). Yandex 10M crown:
+  we win 25B-vs-27B (0.952 vs 0.935 w10k), dead heat at 50-52B, win flat at
+  100B. First published codec numbers on a 10M pool under engine semantics.
+- **Below the wall** (sub-1-bit Yandex): 12.5B -> w10k 0.645 (mean-fill),
+  6.25B -> 0.287. Memory floor ~23.25 bits (~2.9B) just to name an item.
+- **Verification gauntlet**: 7 blind AI audits (SiliconFlow + OpenRouter),
+  adversarial rebuttal round, A3 brute-force re-derivation (exact matches:
+  0.5938, 0.5675, 0.1212, 0.9351). Council caught 2 real probe bugs pre-record.
+
 ### Added — M1 memory discipline + M2 ADC ranker campaign (2026-10-06)
 
 Single-thread SIFT-1M engine, one evening, all points re-measured (10k queries,
