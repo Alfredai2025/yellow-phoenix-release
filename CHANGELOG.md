@@ -213,6 +213,29 @@ Artifacts (not committed, large): ~/yp_ann/data (graphs, JSONs, codec files).
   status incl. informal "Yellow Phoenix" clearance notes + infringement
   reporting) (2026-09-29). Review with counsel before filing/app launch.
 
+## 2026-10-10 — yp_ann campaign: 100M anchor + council audits + routing vein (working repo ed696021 chain freeze)
+- SPACEV-100M headline: w10k recall@10 0.9052 @ 25 B/doc (measured once); W=100k
+  window-sensitivity check 0.9053 — same subset/queries/GT, NOT an independent
+  replication (claim corrected, council-audited). b=1 12 B: flat 0.29-0.39% (random
+  wall) vs w10k 7.6-18.0% by window. qs2 replication (fresh query sample) in
+  progress; b=1 verified genuine (0.65 sigma).
+- Routing vein (1M, council-audited): pure-locator 8-bit key beats banked 1-D
+  floor keys 9.7x (SIFT) / 17x (GloVe) at 0.01 stored key-B/vec; double-duty
+  hypothesis REJECTED — locate, then let the payload rescore rank. WART-7
+  discloses asymmetric key accounting (centroid table uncounted; scales clean
+  only for N >> C*d).
+- Measurement hygiene: 32 gold rows re-measured at 0.0000 max diff; per-query
+  arrays + bootstrap CIs banked (SIFT b=2 w10k 0.9993 [0.9987,0.9998]).
+  duplicate-census self-match bug found+fixed (WART-6). COLUMNS.md WARTs 1-7.
+- Tools: map_guardrail.py (regression alarm), pack_planner.py (offline byte-budget
+  planner for new corpora). Perf patch: sorted-batch gather, rescore ~1 h -> ~5 min
+  (bit-identical, proven on real data).
+- Prediction registry: 10 map cells pre-registered before measurement
+  (sha256 cd5ea703), locked in proof-of-life chain as Entry 791 (freeze ed696021,
+  witness refresh r6).
+- int8 Docker validation PASSED: 0.9902 conditional recall@10 @1M SIFT, sealed
+  container (bug-fix proof for follow-up PR).
+
 ## 2026-10-01 — canonical representative selection + sidecar system (working repo 40854885)
 - Display policy for duplicate clusters: most complete text wins, tie -> lowest
   index. 735,186/5,660,333 docs now show a better copy; verified 5/5 on live
