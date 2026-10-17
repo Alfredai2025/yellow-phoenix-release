@@ -6,6 +6,31 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Measured — P40 edge-bound pruning (NGT-qg triangle bound): evaluated, rejected (2026-10-17)
+
+STEP4 campaign (private staging; qualitative verdict only — numbers stay
+pre-paper per the YPC rule). A complete edge-bound pruning implementation
+(v5 graph with per-edge quantized exact distances, sound squared-euclidean
+triangle test with certified estimator slack, both scalar and batch-kernel
+walk paths, default-off env gate, loader-regression guard bit-identical) was
+built and gated. Verdict: REJECTED on mechanism, not implementation —
+- With exact keys and zero estimator slack, the bound prunes only ~2% of
+  walk evaluations, and those edges are load-bearing (large recall cost).
+- The bound is arithmetically inert once the results heap is full (ascending
+  pops guarantee du <= f); it can only fire while the heap fills, where its
+  prunes are the walk's basin-crossing exploration. Mid-walk the results
+  heap is a heuristic subset, not the true top-ef; true neighbors are
+  reachable exactly through paths a distance bound calls dominated.
+- Conclusion: at the current operating point the walk's exploration volume
+  is NOT redundant — every measured pop-count cut (map sparsity, entry
+  points, admission restraint, edge-bound pruning) trades recall for
+  volume at an unfavorable rate. Walk-lever sweep closed; remaining speed
+  work is off-walk (verify cost, silicon) or packed-quantized-code-walk
+  class, per the campaign's published-mechanism mandate.
+Also fixed en route: a YPFL loader transcription bug (off-table arity n vs
+n+1 — synthesized the final entry, leaving the stream 4 bytes short of the
+section end; harmless until a trailing section needed the true position).
+
 ### Added — 10M-scale codec duel vs Google RSLM (2026-10-07)
 
 All measurements ~/yp_ann (council-audited code, brute-force reproduced):
