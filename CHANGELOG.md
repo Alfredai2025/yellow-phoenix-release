@@ -4,6 +4,24 @@ All notable changes to Yellow Phoenix are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — 2026-10-18
+- STEP4 fetch-latency campaign, BLOCK 17 (the last untried cell, falsification-
+  audit prescription): full-block K-ahead pod prefetch re-tested with THREE
+  fixes — post-demand placement (fleet issued after the pop's own block-read +
+  admissions, not before), L1-vs-L2 operand switch, zero-arithmetic
+  immediate-offset issue — at K=1/2/4 (24-96 streams; every earlier point sat
+  above the fill-structure ceiling). MEASURED DEAD AT EVERY DOSE: coverage
+  99.4% even at K=1 (pods find the very next pop's block ~100% — targeting
+  exonerated), yet covered pops stay SLOWER than same-session cold at every
+  arm (12-24ns/stream tax survives placement/operand/issue-form deltas;
+  L2 targeting worse than L1; walk +6-15% except the K=1/L1 noise point).
+  Counters bit-identical (walk semantics untouched). Same-thread pod
+  prefetch is AIRTIGHT-DEAD on this chassis at every dose — cell closed;
+  the burn's remaining live fetch paths are the decoupled ones
+  (threads+THP / runahead). M3 mechanism test; Xeon re-measure queued (B16);
+  strategic ceiling unchanged (garnish vs the per-evaluation cost program).
+  Qualitative only — YPC numbers stay pre-paper.
+
 ## [Unreleased]
 
 ### Measured — per-pop demand reduction (wrapper screen → survivor-only reads): screen dead by two structural laws; visited-aware block skip shipped (2026-10-18)
