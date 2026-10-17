@@ -6,6 +6,33 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Measured — per-pop demand reduction (wrapper screen → survivor-only reads): screen dead by two structural laws; visited-aware block skip shipped (2026-10-18)
+
+STEP4 campaign (private staging; qualitative verdict, numbers stay
+pre-paper). The demand-reduction screen (prefix-header block repack +
+two-phase certified fetch) was measured DEAD BEFORE any repack, by two
+deterministic facts from an instrumented per-lane probe (guard counters
+bit-identical):
+- Group-major layout law: the transposed colocation blocks that make the
+  batch SIMD kernel fast spread every lane's bytes across all cache lines
+  of the block, so per-lane fetch reduction is architecturally impossible —
+  fetch granularity is the whole block. The repack was not built (the
+  offline analysis showed its best case cancelled its own header cost).
+- Admit-all regime: an exact replay of the admission gate over ~41k scored
+  blocks shows ~99.7% of fresh lanes are admitted at the ef2048 operating
+  point (the results budget never fills) — the demand is real, and a
+  threshold-certified screen would have to skip ~90% of evaluations to
+  save bytes, i.e. guaranteed recall collapse. There is no demand to reduce.
+Surviving residue shipped (default-off env gate, bit-identical by
+construction, guards bit-identical on both arms): blocks where every lane
+is already visited skip their block-body fetch entirely — measured ~4% of
+pops, three independent instruments (paired A/B median, per-pop fetched-byte
+ratio, direct latency contrast) agreeing on a small single-digit walk gain;
+quiet-machine rep owed before banking. Side record: the per-pop demand at
+the operating point being ~all-real is the sharpest evidence yet that
+remaining walk upside lives off the serial pop path (decoupled fetch /
+runahead) or in per-evaluation cost, not in per-pop demand reduction.
+
 ### Measured — P40 edge-bound pruning (NGT-qg triangle bound): evaluated, rejected (2026-10-17)
 
 STEP4 campaign (private staging; qualitative verdict only — numbers stay
