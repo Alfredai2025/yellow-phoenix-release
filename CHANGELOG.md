@@ -325,3 +325,8 @@ Artifacts (not committed, large): ~/yp_ann/data (graphs, JSONs, codec files).
 - `scripts/{kill_test_ce_gt,judge_bge_gt,judge_qwen3_gt}.py` — the three-judge kill-test panel + reconciliation instrumentation (pre-registered criterion; fired on strongest judge; conditioned fidelity 87.8/84.9/79.6)
 - `results/benchmark_results/` — device-run reports + reconciliation record
 - Measurement record anchored in the hash-witnessed chain (tip: Entry 786, re-witnessed 2026-10-03); Zenodo deposit follows.
+
+## 2026-10-18 — mechanism sweep complete (scout-class)
+Same-thread fetch-latency prefetching measured dead 7/7 across M3/Intel Ice Lake/AMD Zen3+Zen4
+(all doses, placements, cache targets, page sizes; 96 CI runs, bit-identical guards). THP +10-20%
+walk on x86 confirmed. Memory-bound M3/x86 ratio measured ~1.6x. Full ledger: yp_ann/STEP4_STATUS.md.
