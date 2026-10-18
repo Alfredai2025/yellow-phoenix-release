@@ -330,3 +330,17 @@ Artifacts (not committed, large): ~/yp_ann/data (graphs, JSONs, codec files).
 Same-thread fetch-latency prefetching measured dead 7/7 across M3/Intel Ice Lake/AMD Zen3+Zen4
 (all doses, placements, cache targets, page sizes; 96 CI runs, bit-identical guards). THP +10-20%
 walk on x86 confirmed. Memory-bound M3/x86 ratio measured ~1.6x. Full ledger: yp_ann/STEP4_STATUS.md.
+
+## 2026-10-18 — BLOCK 20: burst popping (last mechanism experiment) KILLED by pre-registered criteria
+Locality-biased pop order (pop a block-adjacent candidate within a bounded key window instead of the
+global best, manufacturing the page locality B19 measured at 0.00%). Engaged as built (4.7-9.5% burst
+pops), recall in guard at every arm (0.9355-0.9361 vs 0.9353+/-0.001), same-page physics confirmed
+(2.4-2.6x cheaper) — but the 16KB page rate saturates at ~3.4% for EVERY W in {2..128} (flat
+dose-response; binding constraint = candidates-heap content, not W), paired walk medians +1.7/+5.6/
++4.0% (no W faster; noise floor +/-18%). Even the pre-registered 15% page rate would save only ~3% of
+the walk. Kill criteria tripped (page rate <5% at all W AND no W faster) -> reverted (yellow_phoenix
+11db06c0; post-revert guard 0.9353/35390/607740 exact). The ceiling verdict stands COMPLETE: the
+walk-side mechanism map is closed; the only unbeaten paths are the packed-code-walk program
+(Addendum-21 chassis class) or leaders' construction maturity. Durable finding: results.peek() is the
+frozen-set MINIMUM on this engine — never assume it is a worst-key bar. Evidence: yp_ann/logs/b20_*,
+scripts b20_burst.py + b20_sweep.sh.
