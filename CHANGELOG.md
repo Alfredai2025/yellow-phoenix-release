@@ -344,3 +344,18 @@ walk-side mechanism map is closed; the only unbeaten paths are the packed-code-w
 (Addendum-21 chassis class) or leaders' construction maturity. Durable finding: results.peek() is the
 frozen-set MINIMUM on this engine — never assume it is a worst-key bar. Evidence: yp_ann/logs/b20_*,
 scripts b20_burst.py + b20_sweep.sh.
+
+## 2026-10-18 — BLOCK 21 (D1 dense-graph campaign): CLOSED AT EVERY DENSITY
+The density dial measured in BOTH directions on the f32build line (R64/L200, yahoo-minilm 1.4M).
+DENSE-M alpha1.05 (deg 22.6) and DENSE-A alpha1.00 (deg 31.2) vs original alpha1.10 (deg 15.8);
+a12 alpha1.20 (deg 7.9) from B4 completes the four-degree curve. The pops mechanism WORKS:
+density cuts pops 177 -> 133 -> 102 per query at constant-class recall (0.935-0.942) — but
+edge evals stay flat (~3.0-3.2k/q, ef-budget-limited) and per-stop fatness grows faster than
+pop count shrinks (deg-31 nodes straddle 2x3KB tcoloc blocks, ~2x admissions per pop): walk
+1,561-2,142us (noisy scouts) vs the original's quiet-banked 604us. Economic law banked:
+walk cost = evals x per-eval + pops x fixed-per-pop, density trades the two terms against
+each other, and the measured minimum sits at/near the original configuration. No density
+adopted; operating point UNCHANGED (ef2048, recall 0.9353, ~650 Xeon-equiv quiet-banked).
+Ceiling verdict stands COMPLETE — remaining walk upside is per-eval cost only (packed-code-walk
+program, Addendum-21). Side value for the paper: first banked dense-vs-pops vamana curve.
+Qualitative only — YPC numbers stay pre-paper (AGENTS.md hard rule). Evidence: yp_ann/logs/b21_*.
