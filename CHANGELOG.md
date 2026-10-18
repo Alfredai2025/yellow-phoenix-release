@@ -359,3 +359,14 @@ adopted; operating point UNCHANGED (ef2048, recall 0.9353, ~650 Xeon-equiv quiet
 Ceiling verdict stands COMPLETE — remaining walk upside is per-eval cost only (packed-code-walk
 program, Addendum-21). Side value for the paper: first banked dense-vs-pops vamana curve.
 Qualitative only — YPC numbers stay pre-paper (AGENTS.md hard rule). Evidence: yp_ann/logs/b21_*.
+
+## 2026-10-18 — BLOCK 21 FINAL AMENDMENT (D1 dense-graph): same-session pairing flips the M cell to a WIN
+The 22:15 close above predated the pairing runs (finished 22:17). With the original graph run
+SAME-SESSION adjacent to DENSE-M (fileproviderd-noisy window, adjacent-run verdict class):
+2/2 paired passes DENSE-M faster (-32.5% / -7.2% walk) at recall 0.9421 vs 0.9353 (+0.0068);
+counters bit-identical (133.0 vs 177.0 pops, evals +1.3%); nq1000 confirm 0.9366. DENSE-M
+(alpha1.05, deg 22.6) is the operating-point CANDIDATE pending the pre-registered quiet paired
+rep (the decider; if it flips, the close above stands). Durable lesson: the byte-volume minimum
+(DENSE-A, 433KB/q) is NOT the latency minimum — stop fatness (2-block pops, 4x admissions) eats
+it; density trades pops against stop fatness, minimum near deg ~23. SCOUT-grade; no banked swap.
+Qualitative only — YPC numbers stay pre-paper. Evidence: yp_ann/logs/b21_mid_extra.log, b21_final.log.
