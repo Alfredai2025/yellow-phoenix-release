@@ -370,3 +370,20 @@ rep (the decider; if it flips, the close above stands). Durable lesson: the byte
 (DENSE-A, 433KB/q) is NOT the latency minimum — stop fatness (2-block pops, 4x admissions) eats
 it; density trades pops against stop fatness, minimum near deg ~23. SCOUT-grade; no banked swap.
 Qualitative only — YPC numbers stay pre-paper. Evidence: yp_ann/logs/b21_mid_extra.log, b21_final.log.
+
+## 2026-10-19 — BLOCK 23 VERDICT (D2 code-matched 1-bit vamana): the half-size suitcase measured DEAD as the campaign engine
+Built the never-run option: a Vamana whose construction distances ARE the 1-bit RaBitQ estimator
+(YP_PRUNE_MODE=rabitq1 — selection + both alpha-RNG terms in est_L2 space, q'=P@unit prepped once
+per construction point). Graph: avg_deg 36.66 vs f32's 22.61 (estimator-RNG under-prunes — vamana
+density is estimator-noise-dependent, +62%). The 1-bit walk HOLDS on the code-matched graph at
+depth: ef2560 recall 0.9421 >= 0.9343 guard (day-1 "1-bit needs depth" reproduces; day-1
+"unwalkable" revised to a graph-mismatch artifact, not an estimator death sentence). But the
+podium projection failed: walk x0.6 not realized (paired-median ~1.0, noisy window), per-pop
+bytes 2,427 vs 3,741 (-35%; deg-36 straddles 2x1536B blocks), per-query volume -57% yet +36%
+evals at recall-parity and 2x band-verify (theory-rv band). Band diagnostic: band-off == band-on
+-> walk delivery, not the band. FINAL ENGINE STANDS: 96B MID_GORDER (ef2048, recall 0.9366
+nq1000, pops 133). Shipped + verified: YPT1 1536B tcoloc format, rq1_batch32 1-bit kernel
+(fidelity max ABS err 1.04e-7), rq1_tcoloc builder, theory-rv band. Two real bugs caught by
+gates (block granularity; NEON mask reinterpret across lane widths). Owed: quiet paired
+D2-ef2560 vs MID-ef2048 (the one rep that could revive the volume thesis), quiet ORIG-vs-MID
+rep, x86/THP droplet. Qualitative only — YPC numbers stay pre-paper. Evidence: yp_ann/logs/b23_*.
