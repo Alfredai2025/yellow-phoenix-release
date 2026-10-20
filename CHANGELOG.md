@@ -387,3 +387,36 @@ nq1000, pops 133). Shipped + verified: YPT1 1536B tcoloc format, rq1_batch32 1-b
 gates (block granularity; NEON mask reinterpret across lane widths). Owed: quiet paired
 D2-ef2560 vs MID-ef2048 (the one rep that could revive the volume thesis), quiet ORIG-vs-MID
 rep, x86/THP droplet. Qualitative only — YPC numbers stay pre-paper. Evidence: yp_ann/logs/b23_*.
+
+## 2026-10-20 — MOAT DAY (packed-code program: measured, gated, audited — the map completes)
+The leaders-replication campaign, every step pre-registered and council-audited. Verdicts in
+run order: (1) X86 KERNEL ROW BANKED on real silicon (Intel Xeon + 3x EPYC): AVX-512 9.8-10.5
+ns/row, fidelity exactly 0 after a bench-generator nibble-contract fix (audit-isolated; kernels
+were instruction-identical to the engine all along). (2) Fused per-node records: integrity
+bit-identical everywhere, speed a -1.6..-3.8% garnish on M3 — ADOPTED as the default format
+(killed as a speed play, kept as infrastructure). (3) Cache-resident shard chassis KILLED AT
+STAGE 0 by its own gate: the walk touches 161 distinct 768KB bands per query (0.6% locality
+vs 60% required) — B19/B13 restated at band scale; nothing static to pin for. (4) Certified
+early-stop CLOSED (two strikes: naive frontier-min invalid; sound 1-hop closure can never
+clear the query-norm floor — 2 fires in 2000 queries). (5) Water-filling bit allocation
+CLOSED: rotated energies CV 7.8% but the integer-constrained optimum is the uniform code we
+already have — 0 moves; estimator at its floor (cotype-2 compass confirmed on real data).
+(6) JOINT CALIBRATION (council-audited): every axis either breaks the recall floor or sits in
+noise; incumbent ef2048/band_m0.22/cand500 certified as-measured (audit corrected one stale
+table + the 'certified' phrasing — nothing >= +2% demonstrated above the +-3-4% pair noise;
+one hint logged: cand300 +1.63% median, priced at a quiet re-test). (7) LEADERS-REPLICA R1:
+their exact mechanics (flat pool + admission-triggered long-lead prefetch, grid {4,8,16,32}x
+{1,2,4} + pool-only) KILLED ON ALL 13 CELLS (+9..+27% slower) with 156k/156k answer-FNVs
+identical — same-thread prefetch closed on BOTH lead axes and both arch classes; their speed
+is the whole system, parts do not transplant. (8) SOURCE-READ COUNCIL (legal, MIT/Apache):
+extracted glass+NGT blueprints line-by-line — folklore corrected (no colocation, no alpha-RNG,
+no GOrder on their side); their per-pop ~1us is COMPUTE-dominated (31 evals x 25-40ns), our
+kernel is already their class. (9) SIZE DIAL COMPLETE 24B..96B with speed: recall monotonic
+0.835..0.9366, every width 730-780 QPS M3 — BYTES ARE FREE at constant layout, recall is the
+only currency of size; parity lives only at 96B. (10) LIGHTFOOT VIABLE: the flat-index build
+(edges once + codes once + gather-ADC, all in-house) = 492MB walked index (11.7x smaller) at
+FULL recall 0.93656, 100/100 answer-FNVs bit-identical, walk -0.7..-2.3% (marginally faster);
+the engine now runs at the leaders' weight class. NET: top-5-8 ceiling confirmed at every
+layer, every mechanism has a measured grave or a banked number, and the index now ships 11x
+lighter at equal answers. Qualitative only — YPC numbers stay pre-paper (AGENTS.md hard rule).
+Evidence: yp_ann/b27_*_results.md, logs/b27_*, REGISTRY_{MOAT,SIZEDIAL,LIGHTFOOT,CALIB}_20261020.md.
