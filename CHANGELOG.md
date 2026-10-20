@@ -420,3 +420,14 @@ the engine now runs at the leaders' weight class. NET: top-5-8 ceiling confirmed
 layer, every mechanism has a measured grave or a banked number, and the index now ships 11x
 lighter at equal answers. Qualitative only — YPC numbers stay pre-paper (AGENTS.md hard rule).
 Evidence: yp_ann/b27_*_results.md, logs/b27_*, REGISTRY_{MOAT,SIZEDIAL,LIGHTFOOT,CALIB}_20261020.md.
+
+## 2026-10-20 (addendum) — CODEC DUEL: PQ4-48B vs RaBitQ-48B in the flat minimal layout
+Same graph, same flat once-stored layout, two codecs head-to-head on the hard dataset
+(yahoo-384, 1.4M). Rotated-space PQ trained in-house (raw-SIFT PQ precedent did NOT
+transfer — rotation mattered more than codec). Result: PQ's walk-recall edge (+0.014)
+survives only at 1.9x verify pricing; at matched economics ~+0.012 for +19us/query, and a
+tight-margin probe falls BELOW the training-free code (margin cliff). Ruling: the
+training-free, certificate-carrying codec keeps the slot; PQ documented as the verified
+fallback for recall-hungry deployments. Science banked: estimator quality at fixed bytes
+buys little walk recall — the frontier is graph-dominated, confirmed cross-codec.
+Qualitative only — YPC numbers stay pre-paper. Evidence: yp_ann/b27_codec_duel_results_20261020.md.
