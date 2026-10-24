@@ -444,3 +444,14 @@ no THP claim until it lands. Program consequence: the "prefetch/THP 1.1-1.4x" ga
 factor in the gap-closure stack revises down to ~1.02-1.05x; the readout narrows to
 fewer-touches/smaller-bytes (packed-code program). Full tables: MEASUREMENT_LEDGER
 2026-10-24 ~14:0x.
+
+## 2026-10-24 (evening) — P2 phase 1: colocation substrate verified, standalone speed KILLED with numbers
+Per-vertex code colocation (edges+code in one 320B row) on the SIFT champion: bit-identical
+answers verified (4000/4000 FNV + all guards), walk PARITY 0±1% at both ef cells across 5
+interleaved pairs — the pre-reg kill bar (<2%) is met: colocation stays the packed-kernel
+substrate, no standalone speed claim. The 1-bit packed estimator kernel is built and
+fidelity-gated (sign carries 55.3% of the 2-bit estimator variance, analytic ceiling 0.88;
+one real NEON sign-bit bug found and fixed by the gate). The hours-long "answers differ"
+integrity failure was a phantom: a cached truncated raw + a vacuous comparison pipeline —
+chain methodology hardened (completion-marker + row-count gates). Full record:
+MEASUREMENT_LEDGER 2026-10-24 ~19:5x.
