@@ -22,6 +22,27 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   strategic ceiling unchanged (garnish vs the per-evaluation cost program).
   Qualitative only — YPC numbers stay pre-paper.
 
+## [Unreleased] — 2026-10-25
+- SC4 fetch re-price on the int+SIMD walk (last open speed lever; pre-reg
+  gf-sc4-v1, ledger MEASUREMENT_LEDGER.md ~03:4x locked BEFORE any gate):
+  po-prefetch RE-PRICED AT THE NEW ~35ns STEP = WIN at both cells — paired
+  clean interleaved OFF/ON arms (nq10000 reps2 exact-gt): ef128 -10.7% walk
+  (173/172 -> 154/154us), ef64 -8.4% (100/102 -> 92/93us); fresh autotune at
+  the new walk shape chose po=20 at BOTH efs (the fixed grid's edge — the
+  f32-era 8/16 picks died with the 370ns step); marginal/eval -2..-3.4ns every
+  arm; counters banked-exact, RESDUMP bit-identical, recall 0.9448 parity.
+  The mechanism replicates on x86 (droplet scout, throttled 2vCPU VM:
+  -8.2%), which also RUN-tested the _mm_prefetch arm for the first time and
+  caught a cfg-invisible AVX2 dereference bug (fixed). THP: fault-time
+  MADV_HUGEPAGE path armed on the fused-row array (bit-exact, both
+  platforms) but droplet engagement witness = 0 (AnonHugePages never
+  materialized on the 2GB box) -> NO THP CLAIM, axis closed honestly as
+  armed-but-unproven. Final measured stack: walk -46..-52% vs f32 champion,
+  e2e ~6.1-6.3k QPS M3-scout (~2.5-2.6k Xeon-equiv @0.9448) ~= 3.9-4.1x the
+  7763-class anchor; the 4.9-6.85k Xeon board band remains unreached on any
+  measured mechanism. Qualitative only — YPC numbers stay pre-paper; local
+  commit, push reserved for council.
+
 ## [Unreleased]
 
 ### Measured — per-pop demand reduction (wrapper screen → survivor-only reads): screen dead by two structural laws; visited-aware block skip shipped (2026-10-18)
