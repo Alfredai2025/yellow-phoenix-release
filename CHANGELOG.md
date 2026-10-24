@@ -431,3 +431,16 @@ training-free, certificate-carrying codec keeps the slot; PQ documented as the v
 fallback for recall-hungry deployments. Science banked: estimator quality at fixed bytes
 buys little walk recall — the frontier is graph-dominated, confirmed cross-codec.
 Qualitative only — YPC numbers stay pre-paper. Evidence: yp_ann/b27_codec_duel_results_20261020.md.
+
+## 2026-10-24 — fetch-lever arms at the new small-beam walk (gf-pf-v1, SIFT champion)
+Po-prefetch re-gate (G3 machinery) at the TOPK=1 champion walk, ef64/128, exact-gt:
+mechanism reproduces (covered chunks 1.5x cheaper, bit-identical at every po arm)
+but the paired walk moves only ~-2% — the rivals' +29..72% latency-hiding transfer is
+refuted at the >=10% bar on our per-step cost (their hidden miss is 3-4x of a 25-40ns
+step; ours is ~30% of one ~370ns step — the ratio cannot transfer by construction).
+THP deployment path shipped (YP_THP=1, default off, bit-exact guard verified); the x86
+measurement leg is armed in CI but blocked by an account-level Actions billing failure —
+no THP claim until it lands. Program consequence: the "prefetch/THP 1.1-1.4x" garnish
+factor in the gap-closure stack revises down to ~1.02-1.05x; the readout narrows to
+fewer-touches/smaller-bytes (packed-code program). Full tables: MEASUREMENT_LEDGER
+2026-10-24 ~14:0x.
