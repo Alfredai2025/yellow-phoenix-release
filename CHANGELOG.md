@@ -479,3 +479,23 @@ MEASUREMENT_LEDGER 2026-10-24 ~19:5x.
 
 ## 2026-10-25 — SC2-c: int SIMD batch dot kernel + the fork's first-half re-gate (LOCAL commit; push decision reserved for council — SC2 design not yet public)
 Track A SUNBIRD-CORE SC2-c (protocol gf-sc2c-v1, PRE-REG locked before runs; ledger MEASUREMENT_LEDGER.md 2026-10-25 ~01:5x/~02:3x): the batch-32 int dot kernel (NEON vqtbl split-table + AVX2 vpshufb arms, VNNI/VBMI compile-gated garnish, i32 accumulators per council R5) is fidelity-EXACT over 20.8M real dots and runs 17.0ns/eval vs 61.9 scalar (3.6x, M3 SCOUT*; Xeon=M3/2.4). The fork's first-half re-gate @ef128/ef64 (nq10000 reps2 exact-gt, clean-pair arbiter): recall 0.9448-dual >= 0.9425 bar, anchors/creep/RESDUMP/FNV all PASS, walk-basis marginal 35.5ns (below the f32 walk's 66.6ns), paired walk -37.8%/-38.0% vs OFF — a MISS vs the pre-registered [-70,-50]% bar but ~25pp better than the locked prediction (the -50..-70 bar predicated the falsified ~250ns bookkeeping-mass estimate). Cross-arch: droplet AVX2 arm compiled+ran, synthetic fidelity EXACT (two x86-only bugs caught by that leg); droplet lacks AVX512 (garnish compile-checked, labeled). Fallback clause (A1-int-keys dead -> f32 keys + fused row) NOT invoked — banked as a council decision point: int keys + kernel now BEAT the f32 staged walk outright; SC2-d (fused row, +3.8ns/eval measured for the 320B stride) carries the remaining ~12pp to the bar.
+
+## 2026-10-25 — TRACK B B-phase-2 (LOCAL commit; push reserved for council — Track B design not public)
+Track B sign-voting codec, gates B2+B3 (protocol gf-b-v1, pre-reg locked before builds; ledger
+MEASUREMENT_LEDGER.md 2026-10-25 ~08:2x; engine commit c080174a "gf_b:"). B2 PASS: the M=4
+int-gather batch kernel (SC2-c template, NEON+AVX2, interleaved 64B rows, doubled i16 nibble
+tables, the M f32 1/s_v epilogue) runs 23.4-24.3ns/eval M3 SCOUT* vs the 25.5ns bar (1.5x the
+2-bit 17ns), fidelity-EXACT on 83.2M dots on BOTH arches (droplet AVX2 arm compiled+ran,
+67.2ns throttled-VM scout). B3 KILL: the M=4 walk (champion chassis verbatim, same graph/entry/
+verify oath) vs the mode-4+po32 champion, nq10000 reps2 exact-gt clean same-session pairs:
+B walk 216/218us + rec@10-dual 0.0053 vs champion 119/121us + 0.9448 — BOTH bars fail by
+orders; the sign-voting codec family CLOSES (third strike: 1-bit p2b, sign-vote M4). Kill
+mechanism measured: the vote estimator's tail noise (sd 0.0285 cos) plants +3sd false keys;
+the ef-pool fills with false nodes, the admission/terminal ceiling locks out the true gt ring
+one hop away (results-128 true cos 0.80-0.83 in the right basin); ef=1024 dilution reaches
+only rec@10 0.394 — the false ceiling is a wall. Pooled fidelity parity (0.9901 vs 2-bit
+0.9914) does not transfer to a graph walk: the walk consumes the max-over-evals TAIL, where
+2x noise sd is exponentially more expensive. Paper keeps: the B1 variance-law verification
+(rotation independence 0.0446 < 0.3; 1/M law 1.04-1.10), the working B2 kernel, and the
+walk-false-ceiling autopsy. The speed program's lever board is FINAL and complete (SC4c stack
+stands: walk -50..-56% vs f32, e2e ~4.4x 7763-class @0.9448).
