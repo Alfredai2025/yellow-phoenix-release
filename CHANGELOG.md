@@ -4,6 +4,29 @@ All notable changes to Yellow Phoenix are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — 2026-10-26
+- LEECH-GOLAY CELL stage L1 (the algebraic-codec program; pre-reg ledger
+  MEASUREMENT_LEDGER.md ~10:0x 2026-10-26; protocol gf-lg-v1): the first
+  lattice-quantizer fidelity measurement of the campaign — own-Rust SPLAG-class
+  math (hexacode -> Golay [24,12,8] via the MOG rule, QR cross-check; Leech
+  conditions; 196560 minimal vectors enumerated EXACTLY with a bounded
+  335-shape exclusion, 0 unexpected; E8 block for the 8 leftover dims, 240
+  roots). Construction-A quantizer Lambda_A = (Golay + 2 Z^24)/sqrt(8), exact
+  nearest point via separable coset LUTs, 5x24d blocks + E8 on the banked
+  champion rotation with per-dim whitening. FIDELITY (gf-b-v1 protocol, 20.48M
+  dots, paired): champion 2-bit 32B 0.99136 pooled; lattice 40B 0.98461
+  (nearest-bytes bar -0.0068 = L1 PASS); lattice 56B 0.99537 BEATS the 32B
+  champion; lattice 72B 0.99848 with worst-per-query 0.989 vs champion 0.939
+  (a THIN estimator tail — directly relevant to the walk's max-over-evals
+  kill mechanism). Structural findings banked: the lattice index alone carries
+  almost nothing (8B index-only row 0.170) — the information lives in the
+  z-residual, so the lattice byte floor is 40B vs self-sufficient statistical
+  codes at 8-16B (unopposed at the low end); exact decode costs 93-98 us/query
+  (15x the prep budget, M3 scout) — a hexacode bounded-distance decoder is
+  required for any walk integration (L1-polish/L2). Unimodularity CITED not
+  re-derived (the public 24x24 generator table's text extraction is mangled,
+  rank 23; clean-basis construction logged as L1-polish). Ledger same-day.
+
 ## [Unreleased] — 2026-10-18
 - STEP4 fetch-latency campaign, BLOCK 17 (the last untried cell, falsification-
   audit prescription): full-block K-ahead pod prefetch re-tested with THREE
