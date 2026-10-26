@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased] — 2026-10-26
+- V9 SPECTRAL RELABEL (the master-vein register's V9, demoted incremental-over
+  Coleman GOrder'22 — the claim is the measured comparison; protocol gf-sp-v1,
+  pre-reg MEASUREMENT_LEDGER.md ~17:5x 2026-10-26, verdict same-day ~18:4x):
+  the Fiedler vector of the champion graph (normalized Laplacian lambda_2 =
+  6.7312e-3, eigsh which='LA' shift-invert-free, residual 4.8e-10, connected,
+  1M nodes in 13.3s total — cheap enough to stay garnish-class forever) vs the
+  banked GOrder greedy. THE NULL, MEASURED AND EXPLAINED: on the TRUE integer
+  layout objectives the greedy WINS — Q1=sum|label_u-label_v| 3.29e12 vs 6.81e12
+  (2.07x), Q2 1.91x — the Fiedler optimality is provable only for the REAL-VALUED
+  relaxation; sorted-Fiedler is a heuristic for the arrangement and loses it here.
+  Spectral's only win: p99 edge bandwidth -33%. Gate parity at mode-4 po=32
+  (ef128 0.94522 vs 0.94480, ef64 0.86264 vs 0.86240, pops BIT-IDENTICAL both,
+  walk/e2e within noise — the B13 99%-cold law absorbs layout in BOTH directions:
+  the spectral order touches +16.3% MORE distinct pages per query yet walks the
+  same). GOrder STANDS as the champion layout. Campaign engine commit 5f0cfb97
+  (gf_sp_relabel.rs), artifacts gf_sp_*, ledger same-day.
 - LEECH-GOLAY CELL stage L1 (the algebraic-codec program; pre-reg ledger
   MEASUREMENT_LEDGER.md ~10:0x 2026-10-26; protocol gf-lg-v1): the first
   lattice-quantizer fidelity measurement of the campaign — own-Rust SPLAG-class
