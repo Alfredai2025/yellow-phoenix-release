@@ -4,6 +4,26 @@ All notable changes to Yellow Phoenix are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — 2026-11-03
+- DUEL / MEASUREMENT HARNESS (public release per user-approved spec
+  QUEUED_DUEL_HARNESS_RELEASE_20261103): the code that proves the map
+  paper's byte-matched duel claim vs Google's public RSLM reference.
+  New `duel_harness/` directory, pure Python, AGPL-3.0-or-later:
+  per-dimension Lloyd-Max codec (`codec.py`), the dual rulers
+  (`rulers.py`: flat-recall evaluator + engine-ruler evaluator with the
+  campaign-verified streaming merge), the duel runner (`duel.py`) against
+  the RSLM reference vendored UNMODIFIED under `vendor/rslm/` with its
+  Apache-2.0 LICENSE, map-cell scripts (`cells/`: SIFT-1M + GloVe-1M
+  ladder, Yandex T2I-10M ladder, Yahoo-384 ledge sweep), the published
+  numbers as a self-check fixture (`expected_outputs/published_cells.csv`),
+  and a README with the protocol, public-dataset fetch instructions, and
+  the SCOUT/positional framing. Verified before push: the rulers evaluate
+  the campaign's banked codes to the published cells EXACTLY (SIFT 64B
+  flat 0.8776 / w10k 0.9992; SIFT 16B 0.2455/0.9967; GloVe 25B 0.5639/
+  1.0000; GloVe 12B 0.2839/0.9932). Engine internals (graph, SIMD kernels,
+  layouts, speed campaign) are explicitly out of scope and absent.
+  CI: python compileall now also covers `duel_harness`.
+
 ## [Unreleased] — 2026-10-26
 - V9 SPECTRAL RELABEL (the master-vein register's V9, demoted incremental-over
   Coleman GOrder'22 — the claim is the measured comparison; protocol gf-sp-v1,

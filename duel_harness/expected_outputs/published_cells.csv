@@ -1,0 +1,25 @@
+dataset,pool_N,dims,bits,bytes,metric,flat,w10k,source,verified
+SIFT,1000000,128,1,16,l2,0.2455,0.9967,dual_ruler,bf-verified
+SIFT,1000000,128,2,32,l2,0.575,0.9993,dual_ruler,bf-verified
+SIFT,1000000,128,3,48,l2,0.7749,0.9992,dual_ruler,bf-verified
+SIFT,1000000,128,4,64,l2,0.8776,0.9992,dual_ruler,bf-verified
+SIFT,1000000,128,5,80,l2,0.9317,0.9992,dual_ruler,bf-verified
+SIFT,1000000,128,6,96,l2,0.9594,0.9993,dual_ruler,bf-verified
+SIFT,1000000,128,7,112,l2,0.9757,0.9991,dual_ruler,bf-verified
+SIFT,1000000,128,8,128,l2,0.9862,0.9991,dual_ruler,bf-verified
+GloVe,1000000,100,1,12,cosine,0.2839,0.9932,dual_ruler,bf-verified
+GloVe,1000000,100,2,25,cosine,0.5639,1.0,dual_ruler,bf-verified
+GloVe,1000000,100,3,37,cosine,0.7487,1.0,dual_ruler,bf-verified
+GloVe,1000000,100,4,50,cosine,0.864,1.0,dual_ruler,bf-verified
+GloVe,1000000,100,5,62,cosine,0.9225,1.0,dual_ruler,bf-verified
+GloVe,1000000,100,6,75,cosine,0.9588,0.9999,dual_ruler,bf-verified
+GloVe,1000000,100,7,87,cosine,0.9751,1.0,dual_ruler,bf-verified
+GloVe,1000000,100,8,100,cosine,0.9872,0.9999,dual_ruler,bf-verified
+YandexT2I,10000000,200,1,25,cosine,0.1308,0.952,yandex_ladder,bf-verified (0.5938/1.0000 exact)
+YandexT2I,10000000,200,2,50,cosine,0.3647,0.9976,yandex_ladder,bf-verified (0.5938/1.0000 exact)
+YandexT2I,10000000,200,3,75,cosine,0.5938,1,yandex_ladder,bf-verified (0.5938/1.0000 exact)
+YandexT2I,10000000,200,4,100,cosine,0.7653,1,yandex_ladder,bf-verified (0.5938/1.0000 exact)
+YandexT2I,10000000,200,5,125,cosine,0.8694,1,yandex_ladder,bf-verified (0.5938/1.0000 exact)
+YandexT2I,10000000,200,6,150,cosine,0.9297,1,yandex_ladder,bf-verified (0.5938/1.0000 exact)
+YandexT2I,10000000,200,7,175,cosine,0.9596,1,yandex_ladder,bf-verified (0.5938/1.0000 exact)
+YandexT2I,10000000,200,8,200,cosine,0.9775,1,yandex_ladder,bf-verified (0.5938/1.0000 exact)
