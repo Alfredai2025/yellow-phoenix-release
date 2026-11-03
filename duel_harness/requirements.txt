@@ -1,0 +1,7 @@
+# Duel harness Python dependencies (Python 3.10+).
+# Training the codec needs scikit-learn; scoring/evaluating banked codes needs
+# only numpy (+ h5py for the ann-benchmarks bundles). The vendored RSLM
+# reference codec (vendor/rslm/) needs only numpy.
+numpy>=1.24
+h5py>=3.7
+scikit-learn>=1.2
