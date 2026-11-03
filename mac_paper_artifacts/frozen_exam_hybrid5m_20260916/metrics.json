@@ -1,0 +1,80 @@
+{
+  "metrics": {
+    "hnsw": {
+      "R@1_include": 0.997,
+      "selfhit@1": 0.971,
+      "R@10_include": 0.6039,
+      "selfhit@10": 0.971,
+      "R@100_include": 0.57592,
+      "selfhit@100": 0.971,
+      "R@1_exclude": 0.026,
+      "R@10_exclude": 0.5322,
+      "R@100_exclude": 0.0,
+      "mean_survivors": 100.0
+    },
+    "cascade": {
+      "R@1_include": 0.972,
+      "selfhit@1": 0.971,
+      "R@10_include": 0.18350000000000005,
+      "selfhit@10": 0.971,
+      "R@100_include": 0.57592,
+      "selfhit@100": 0.971,
+      "R@1_exclude": 0.001,
+      "R@10_exclude": 0.09380000000000001,
+      "R@100_exclude": 0.0,
+      "mean_survivors": 100.0
+    },
+    "veto_loose_q25": {
+      "R@1_include": 0.99,
+      "selfhit@1": 0.971,
+      "R@10_include": 0.5448999999999998,
+      "selfhit@10": 0.971,
+      "R@100_include": 0.43866,
+      "selfhit@100": 0.971,
+      "R@1_exclude": 0.019,
+      "R@10_exclude": 0.4655,
+      "R@100_exclude": 0.0,
+      "mean_survivors": 75.0
+    },
+    "veto_medium_q50": {
+      "R@1_include": 0.987,
+      "selfhit@1": 0.971,
+      "R@10_include": 0.44770000000000004,
+      "selfhit@10": 0.971,
+      "R@100_include": 0.29397,
+      "selfhit@100": 0.971,
+      "R@1_exclude": 0.016,
+      "R@10_exclude": 0.3615,
+      "R@100_exclude": 0.0,
+      "mean_survivors": 50.0
+    },
+    "veto_strict_q75": {
+      "R@1_include": 0.981,
+      "selfhit@1": 0.971,
+      "R@10_include": 0.3035,
+      "selfhit@10": 0.971,
+      "R@100_include": 0.14904,
+      "selfhit@100": 0.971,
+      "R@1_exclude": 0.01,
+      "R@10_exclude": 0.2101,
+      "R@100_exclude": 0.0,
+      "mean_survivors": 25.0
+    }
+  },
+  "mode1": {
+    "warm_p50_ms": 0.831396,
+    "warm_p95_ms": 1.18089615,
+    "rss_mb": 3455.375,
+    "rss_index_mb": 1165.984375
+  },
+  "spectral_modes_shared": {
+    "warm_p50_ms": 207.589,
+    "warm_p95_ms": 219.1170271,
+    "rss_mb": 5085.015625,
+    "probe_first_query_s": 0.427761333
+  },
+  "spectral_build_s": 926.8229849338531,
+  "rss_spectral_mb": 8991.9375,
+  "threshold_overhead_us": 29.06916,
+  "score_semantics": "cand_scores = squared spectral EUCLIDEAN DISTANCE (FFI negates index's -dist); smaller = nearer"
+}

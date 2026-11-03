@@ -1,0 +1,6 @@
+{
+  "seed": 20260916,
+  "n": 1000,
+  "corpus": "data/real_5m.ism/floats_5m.f16/papers_5m.db (5,107,508 docs)",
+  "text": "{title}. {abstract}\"[:512]\""
+}

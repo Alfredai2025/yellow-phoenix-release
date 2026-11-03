@@ -1,0 +1,33 @@
+{
+  "n_real": 1000,
+  "n_gibberish": 65,
+  "real_displayed_top1": {
+    "p0": 0.6924,
+    "p1": 0.7791,
+    "p5": 1.0,
+    "p25": 1.0,
+    "p50": 1.0,
+    "p75": 1.0,
+    "p95": 1.0,
+    "p99": 1.0,
+    "p100": 1.0001
+  },
+  "gibberish_exact_ceiling_top1": {
+    "p0": 0.3871,
+    "p1": 0.3936,
+    "p5": 0.4114,
+    "p25": 0.4633,
+    "p50": 0.4966,
+    "p75": 0.5276,
+    "p95": 0.5992,
+    "p99": 0.6506,
+    "p100": 0.6737
+  },
+  "gibberish_max": 0.6737,
+  "real_min": 0.6924,
+  "real_p1": 0.7791,
+  "overlap": false,
+  "recommended_threshold": 0.726,
+  "false_alarm_rate_at_threshold": 0.001,
+  "gibberish_catch_rate_at_threshold": 1.0
+}

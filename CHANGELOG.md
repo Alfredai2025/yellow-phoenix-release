@@ -558,3 +558,9 @@ only rec@10 0.394 — the false ceiling is a wall. Pooled fidelity parity (0.990
 (rotation independence 0.0446 < 0.3; 1/M law 1.04-1.10), the working B2 kernel, and the
 walk-false-ceiling autopsy. The speed program's lever board is FINAL and complete (SC4c stack
 stands: walk -50..-56% vs f32, e2e ~4.4x 7763-class @0.9448).
+- Mac paper verification bundle (mac_paper_artifacts/): frozen exam (seed 20260916,
+  embeddings/IDs/scores only — no text), 16 benchmark JSONs, clean-room checker
+  (reproduces k=50 0.9049 and k=100 0.9538 exactly; k=200 reported as not
+  reproducible from released artifacts, matching the paper's own disclosure),
+  claims-layer extractor (sha256-verified vs the deposited PDF). Companion to
+  DOI 10.5281/zenodo.23920218. CC BY 4.0.

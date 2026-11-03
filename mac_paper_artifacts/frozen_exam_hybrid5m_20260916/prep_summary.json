@@ -1,0 +1,13 @@
+{
+  "chosen_encoder": "st_fp32",
+  "chosen_model": "itq_fixed",
+  "calibration": {
+    "st_fp32+itq_1m": 256.5625,
+    "onnx_int8ptq+itq_1m": 257.71875,
+    "st_fp32+itq_fixed": 0.0,
+    "onnx_int8ptq+itq_fixed": 37.4375
+  },
+  "embed_s": 1.9372880458831787,
+  "gt_wall_s": 45.07916784286499,
+  "self_hamming_mean": 6.784
+}

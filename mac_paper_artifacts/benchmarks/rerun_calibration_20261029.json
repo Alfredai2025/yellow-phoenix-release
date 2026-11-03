@@ -1,0 +1,11 @@
+{
+  "stage": "calibration",
+  "result": {
+    "real_floor_recomputed": -0.201272,
+    "base_real_min": 0.6924,
+    "floor_match": false
+  },
+  "wall_s": 18.7,
+  "machine": "arm64",
+  "date": "2026-10-30T00:20:27.953049+00:00"
+}

@@ -1,0 +1,32 @@
+{
+  "date": "20260917",
+  "seed": 20260917,
+  "source_sha1": "a193055911c9f4d735e91071ecf32b333ad4964e",
+  "git": "b0b86643",
+  "format": "YPT1",
+  "n_docs": 5107508,
+  "dim": 384,
+  "recipe": "PCA + kmeans PQ 256/sub (Entry 64 matched-bytes recipe)",
+  "entry64_reference": {
+    "compact_r10": 0.872,
+    "lite_r10": 0.714,
+    "float16_r10": 0.906
+  },
+  "tiers": {
+    "tier_compact": {
+      "bytes_per_doc": 192,
+      "subdim": 2,
+      "file_bytes": 981626140,
+      "file_gb": 0.982
+    },
+    "tier_lite": {
+      "bytes_per_doc": 64,
+      "subdim": 6,
+      "file_bytes": 327865116,
+      "file_gb": 0.328
+    }
+  },
+  "exam_gate": {
+    "shipped_compact_exam_r10": 0.8717
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "st_fp32+itq_1m": 256.5625,
+  "onnx_int8ptq+itq_1m": 257.71875,
+  "st_fp32+itq_fixed": 0.0,
+  "onnx_int8ptq+itq_fixed": 37.4375
+}

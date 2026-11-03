@@ -1,0 +1,280 @@
+{
+  "claims_layer": {
+    "paper": "Yellow Phoenix: Semantic Search on Apple Silicon at the Candidate Ceiling — 95.3% Top-10 over Five Million Papers in 577 Microseconds",
+    "version": "2026-09-19-final",
+    "author": "Marc John Sawyer",
+    "exam": {
+      "seed": 20260916,
+      "n_queries": 1000,
+      "archive": "frozen_exam_hybrid5m_20260916/",
+      "contents": [
+        "qemb.npy",
+        "qhash.npy",
+        "gt_top100_ids.npy",
+        "cand_ids.npy",
+        "meta.json"
+      ]
+    },
+    "corpora": {
+      "production_5m": {
+        "docs": 5107508,
+        "source": "arXiv+PubMed",
+        "encoder": "current-generation",
+        "float16_bytes_per_doc": 768,
+        "float16_store_gb": 3.92
+      },
+      "scale_10m": {
+        "docs": 10000000,
+        "source": "multiple open scholarly sources (arXiv, PubMed, OpenAlex); ~2.5M unique works, per-work duplication (~4 records/work)",
+        "encoder": "earlier-generation",
+        "note": "self-contained; do not cross-compare recall without encoder provenance",
+        "composition_evidence": "median within-corpus NN 58 bits (same-work version pairs) vs 137+ bits cross-work; probed 2026-09-19, n=300"
+      }
+    },
+    "claims": [
+      {
+        "id": "depth-k50",
+        "metric": "R@10",
+        "value": 0.9049,
+        "ci95": [
+          0.8968,
+          0.913
+        ],
+        "candidate_depth": 50,
+        "ef": 400,
+        "script": "test_candidate_depth.py"
+      },
+      {
+        "id": "depth-k100",
+        "metric": "R@10",
+        "value": 0.9538,
+        "ci95": [
+          0.9479,
+          0.9597
+        ],
+        "candidate_depth": 100,
+        "ef": 400,
+        "candidate_ceiling": 0.9539,
+        "script": "test_candidate_depth.py"
+      },
+      {
+        "id": "depth-k200",
+        "metric": "R@10",
+        "value": 0.9802,
+        "ci95": [
+          0.9766,
+          0.9838
+        ],
+        "candidate_depth": 200,
+        "ef": 400,
+        "candidate_ceiling": 0.9804,
+        "script": "test_candidate_depth.py"
+      },
+      {
+        "id": "ef-ladder",
+        "ladder": [
+          {
+            "ef": 128,
+            "index_r1_pct": {
+              "perturb": 98.8,
+              "exclude_self": 94.3,
+              "random": 75.0
+            },
+            "p50_us": 917,
+            "p95_us": null
+          },
+          {
+            "ef": 192,
+            "index_r1_pct": {
+              "perturb": 99.1,
+              "exclude_self": 94.7,
+              "random": 75.0
+            },
+            "r10_k100": 0.9514,
+            "r10_ci95": [
+              0.9447,
+              0.9581
+            ],
+            "p50_us": 563,
+            "p95_us": 1019
+          },
+          {
+            "ef": 256,
+            "index_r1_pct": {
+              "perturb": 99.5,
+              "exclude_self": 94.6,
+              "random": 75.0
+            },
+            "r10_k100": 0.953,
+            "r10_ci95": [
+              0.9468,
+              0.9592
+            ],
+            "p50_us": 577,
+            "p95_us": 831,
+            "role": "default"
+          },
+          {
+            "ef": 400,
+            "index_r1_pct": {
+              "perturb": 99.7,
+              "exclude_self": 95.8,
+              "random": 100.0
+            },
+            "r10_k100": 0.9538,
+            "r10_ci95": [
+              0.948,
+              0.96
+            ],
+            "p50_us": 951,
+            "p95_us": null,
+            "role": "thorough-override"
+          }
+        ],
+        "device": "Mac M3 Pro",
+        "script": "ef_sweep_k100.py"
+      },
+      {
+        "id": "tier-float16",
+        "store": "float16",
+        "size_gb": 3.9,
+        "r10_k50": 0.9049,
+        "r10_k100": 0.9538,
+        "script": "compare_compact_vs_float16.py"
+      },
+      {
+        "id": "tier-pq192",
+        "store": "PQ@192-YPT1",
+        "size_gb": 0.98,
+        "bytes_per_doc": 192,
+        "r10_k50": 0.8711,
+        "r10_k50_ci95": [
+          0.8634,
+          0.8788
+        ],
+        "r10_k100": 0.9021,
+        "r10_k100_ci95": [
+          0.8959,
+          0.9083
+        ],
+        "pearson_vs_exact": 0.9845,
+        "exam_gate_band": [
+          0.85,
+          0.9
+        ],
+        "script": "compare_compact_vs_float16.py"
+      },
+      {
+        "id": "determinism-10m",
+        "metric": "strict-R@1-percent",
+        "device_ladder": {
+          "iPhone16-A18": [
+            23.5,
+            45.3,
+            65.1,
+            83.1
+          ],
+          "Mac-M3Pro": [
+            23.5,
+            45.3,
+            65.1,
+            83.1
+          ]
+        },
+        "ef_ladder": [
+          400,
+          1000,
+          2000,
+          4000
+        ],
+        "warm_p50_ms_ef4000": {
+          "iPhone16": 15.1,
+          "Mac": 7.5
+        },
+        "runs": 4,
+        "script": "mac_10m_recall_bench.py"
+      },
+      {
+        "id": "calibration",
+        "shipped_threshold": 0.68,
+        "gibberish_ceiling": 0.6737,
+        "real_floor": 0.6924,
+        "real_p1": 0.7791,
+        "false_alarms_per_1000": 0,
+        "gibberish_catch_rate": 1.0,
+        "depth_insensitive": true,
+        "script": "calibrate_confidence_5m.py"
+      },
+      {
+        "id": "device-production-r1",
+        "metric": "production-R@1",
+        "value_pct": [
+          97.0,
+          99.0
+        ],
+        "device": "iPhone 16",
+        "n": 100,
+        "source": "device_recall_report_20260918.txt"
+      },
+      {
+        "id": "cold-warm",
+        "cold_p50_ms": {
+          "perturb": 32.6,
+          "exclude_self": 14.5,
+          "random": 2.1
+        },
+        "warm_p50_ms": {
+          "perturb": 1.64,
+          "exclude_self": 1.43,
+          "random": 2.4
+        },
+        "device": "iPhone 16",
+        "source": "device_recall_report_n300_freshboot_20260918.txt"
+      },
+      {
+        "id": "memory-guard",
+        "behavior": "20M mapping refused (7.2GB VA > 6GB budget)",
+        "device": "iPhone 16",
+        "source": "device reports"
+      },
+      {
+        "id": "o1-identity-200m",
+        "metric": "p50-us",
+        "value": 1.58,
+        "build_s": 19,
+        "corpus": "synthetic",
+        "status": "cited-prior-unpublished-record",
+        "latency_ratio_40m_over_1m": 1.05
+      },
+      {
+        "id": "encoder-effect",
+        "earlier_encoder_r1_ladder_pct": [
+          23.5,
+          45.3,
+          65.1,
+          83.1
+        ],
+        "current_encoder_r1_at_ef400_pct": 99.7,
+        "corpus_size_confound_disclosed": true
+      },
+      {
+        "id": "memory-budget-per-100m-docs",
+        "per_100m_gb": {
+          "graph": 60,
+          "float16": 77,
+          "pq192": 19
+        },
+        "basis": "measured per-unit: ~600B/node graph, 768B/doc f16, 192B/doc PQ"
+      }
+    ],
+    "audit_chain": {
+      "entries": 69,
+      "append_only": true,
+      "deletions": 0,
+      "head_commit": "720f6f4f",
+      "app_commit_fetchk": "9f4fd87"
+    },
+    "latency_disclaimer": "single-machine latencies carry 10-20% run-to-run jitter; only relative orderings and recall are precise",
+    "synthetic_disclaimer": "synthetic-scale numbers certify latency class only, never recall"
+  }
+}

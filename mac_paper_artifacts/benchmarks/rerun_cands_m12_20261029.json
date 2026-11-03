@@ -1,0 +1,13 @@
+{
+  "stage": "cands_m12",
+  "result": {
+    "regen_s": "see wall",
+    "shape": [
+      1000,
+      100
+    ]
+  },
+  "wall_s": 2.8,
+  "machine": "arm64",
+  "date": "2026-10-29T14:58:03.481909+00:00"
+}

@@ -1,0 +1,20 @@
+{
+  "n_queries": 1000,
+  "k": 100,
+  "ef": 400,
+  "mode1_hnsw": {
+    "warm_p50_ms": 0.831396,
+    "warm_p95_ms": 1.18089615,
+    "rss_mb": 3455.375,
+    "rss_index_mb": 1165.984375
+  },
+  "spectral_build_s": 926.8229849338531,
+  "rss_spectral_mb": 8991.9375,
+  "spectral_modes_shared": {
+    "warm_p50_ms": 207.589,
+    "warm_p95_ms": 219.1170271,
+    "rss_mb": 5085.015625,
+    "probe_first_query_s": 0.427761333
+  },
+  "threshold_overhead_us": 29.06916
+}
