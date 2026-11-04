@@ -8,6 +8,7 @@
 // Usage: fastscan_bench [n_vectors] [n_queries]
 #![allow(clippy::missing_safety_doc)]
 
+#[cfg(target_arch = "aarch64")]
 use std::arch::aarch64::*;
 use std::time::Instant;
 
@@ -38,6 +39,7 @@ fn pack(codes: &[u8], n: usize) -> Vec<u8> {
 /// u8 accumulation cannot wrap the u16 lane before reduction (distances are
 /// compared within a query only, so a per-subq affine bias is ranking-neutral
 /// at int8 precision — the Andre-style float correction lives at decode time).
+#[cfg(target_arch = "aarch64")]
 #[inline]
 unsafe fn scan_group(
     blocks: &[u8],          // NB * 32 bytes for this 32-code group
@@ -106,23 +108,27 @@ fn main() {
         })
         .collect();
 
-    // ---- fast-scan pass ----
-    let mut sink = 0u64;
-    let t = Instant::now();
-    for q in 0..nq {
-        let luts = &lut_ptrs[q];
-        for g in 0..groups {
-            let d = unsafe { scan_group(&packed[g * NB * BLOCK_BYTES..(g + 1) * NB * BLOCK_BYTES], luts) };
-            sink += d[0] as u64; // keep alive
+    // ---- fast-scan pass (NEON-only) ----
+    #[cfg(target_arch = "aarch64")]
+    let dps = {
+        let mut sink = 0u64;
+        let t = Instant::now();
+        for q in 0..nq {
+            let luts = &lut_ptrs[q];
+            for g in 0..groups {
+                let d = unsafe { scan_group(&packed[g * NB * BLOCK_BYTES..(g + 1) * NB * BLOCK_BYTES], luts) };
+                sink += d[0] as u64; // keep alive
+            }
         }
-    }
-    let dt = t.elapsed().as_secs_f64();
-    let dists = nq as f64 * n as f64;
-    let dps = dists / dt;
-    println!(
-        "FASTSCAN n={} q={}: {:.1}s, {:.2}M dist/sec ({:.2} GB/s codes), sink={}",
-        n, nq, dt, dps / 1e6, dps * 32.0 / 1e9, sink
-    );
+        let dt = t.elapsed().as_secs_f64();
+        let dists = nq as f64 * n as f64;
+        let dps = dists / dt;
+        println!(
+            "FASTSCAN n={} q={}: {:.1}s, {:.2}M dist/sec ({:.2} GB/s codes), sink={}",
+            n, nq, dt, dps / 1e6, dps * 32.0 / 1e9, sink
+        );
+        dps
+    };
 
     // ---- scalar reference (unpacked LUT loop) for contrast ----
     let lut_u16: Vec<[u16; 16]> = (0..M)
@@ -152,5 +158,11 @@ fn main() {
         "SCALAR-REF n={}: {:.2}M dist/sec, sink={}",
         sample, dps2 / 1e6, sink2
     );
+    #[cfg(not(target_arch = "aarch64"))]
+    let dps = {
+        println!("FASTSCAN: NEON-only microbench, skipped on {}", std::env::consts::ARCH);
+        0f64
+    };
+    #[cfg(target_arch = "aarch64")]
     println!("GATE >20M dist/sec: {}", if dps > 20e6 { "PASS" } else { "FAIL" });
 }

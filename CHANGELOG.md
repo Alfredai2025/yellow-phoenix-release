@@ -564,3 +564,5 @@ stands: walk -50..-56% vs f32, e2e ~4.4x 7763-class @0.9448).
   reproducible from released artifacts, matching the paper's own disclosure),
   claims-layer extractor (sha256-verified vs the deposited PDF). Companion to
   DOI 10.5281/zenodo.23920218. CC BY 4.0.
+- fix CI: cfg-gate fastscan_bench NEON code (aarch64-only microbench); x86_64 jobs
+  now compile it as a stub instead of failing (broken since 2026-10-20)
