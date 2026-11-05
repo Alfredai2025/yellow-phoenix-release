@@ -4,6 +4,18 @@ All notable changes to Yellow Phoenix are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — 2026-11-05
+- PAPER-3 DATASET REPO COMPLETE + RENAMED FOR SEO. HF dataset repo now at
+  `YellowPhoenix/fully-offline-semantic-search-apple-watch` (renamed from
+  `semantic-search-apple-watch`; old URL redirects). 19 files incl. two
+  new real-hardware videos: wrist-side 3.9M scan (86.5% R@10 @ 34.8 ms,
+  from Oct-2 footage IMG_9753) and the iPhone 4.9M FAST **airplane-mode**
+  re-rank run (graph 81.5–82.6% → +1024-bit re-rank 94.0–94.6% R@10,
+  bit-identical to Oct-2, Nov-5 re-run after free-provisioning expiry;
+  original graph+sidecar restored from Seagate PROJECT_VAULT). Card H1 leads
+  with "Fully Offline". Watch Zenodo record bumped to v4 (10.5281/zenodo.23971440)
+  for the updated mirror link; files identical to v3.
+
 ## [Unreleased] — 2026-11-03
 - DUEL / MEASUREMENT HARNESS (public release per user-approved spec
   QUEUED_DUEL_HARNESS_RELEASE_20261103): the code that proves the map
