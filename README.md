@@ -17,6 +17,14 @@ python -c "from yp_bridge import BinaryHNSW; h = BinaryHNSW(); print(len(h))"
 
 See `docs/binary_hnsw_summary.md` for full details.
 
+## Papers & datasets
+
+**Paper 3 (Watch):** *Fully offline* semantic search on real hardware — 86.5% Top-10 @ 3.9M
+ documents on an Apple Watch (34.8 ms) and 94% @ 4.9M on iPhone in airplane mode.
+ Measurement data kit + real-hardware demo videos:
+ [huggingface.co/datasets/YellowPhoenix/fully-offline-semantic-search-apple-watch](https://huggingface.co/datasets/YellowPhoenix/fully-offline-semantic-search-apple-watch)
+ · paper DOI [10.5281/zenodo.23118337](https://doi.org/10.5281/zenodo.23118337)
+
 ## A note on naming
 Early research-phase commits (May–September 2026) used phenomenological
 codenames — "geometric brain", "mind", "consciousness" — for subsystems
