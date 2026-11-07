@@ -31,10 +31,18 @@ jobs:
           NQ: "2000"
           REPS: "3"
         run: ./target/release/interleave_walk | tee interleave_output.txt
+      - name: Run frontier-batching sweep (SWEEP=1, grid {1,2}x{1,2,3,4}, REPS=5)
+        env:
+          SWEEP: "1"
+          NQ: "2000"
+          REPS: "5"
+        run: ./target/release/interleave_walk | tee interleave_sweep_output.txt
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: interleave-results-${{ matrix.os }}
-          path: interleave_output.txt
+          path: |
+            interleave_output.txt
+            interleave_sweep_output.txt
           if-no-files-found: error
