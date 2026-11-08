@@ -37,6 +37,21 @@ jobs:
           NQ: "2000"
           REPS: "5"
         run: ./target/release/interleave_walk | tee interleave_sweep_output.txt
+      - name: THP A/B (YP_THP=1, legacy mode, ubuntu only)
+        if: matrix.os == 'ubuntu-latest'
+        env:
+          SWEEP: "0"
+          YP_THP: "1"
+          NQ: "2000"
+          REPS: "5"
+        run: |
+          ./target/release/interleave_walk | tee thp_output.txt
+          echo '--- /proc/meminfo hugepage evidence ---'
+          grep -i hugepage /proc/meminfo
+      - name: THP A/B not applicable here — write placeholder
+        if: matrix.os != 'ubuntu-latest'
+        run: |
+          echo 'THP A/B step skipped: madvise(MADV_HUGEPAGE) is Linux-only (YP_THP is a no-op on this runner).' > thp_output.txt
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
@@ -45,4 +60,5 @@ jobs:
           path: |
             interleave_output.txt
             interleave_sweep_output.txt
+            thp_output.txt
           if-no-files-found: error

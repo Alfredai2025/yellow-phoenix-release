@@ -69,6 +69,8 @@
 //!   YP_P    frontier batch size p            (default 1; support {2,3,4})
 //!   SWEEP   1 = full grid (K,p) in {1,2}x{1,2,3,4} x REPS, full table +
 //!           all guard verdicts (CI noise resistance: NQ=2000, REPS=5)
+//!   YP_THP  1 = madvise(MADV_HUGEPAGE) the records Vec (Linux only; no-op
+//!           elsewhere and when unset). Default OFF = unchanged behavior.
 //!
 //! Note on silicon: cross-machine QPS comparisons are only meaningful with
 //! the silicon basis stated; this bench prints none, so treat absolute QPS
@@ -600,6 +602,37 @@ fn env_flag(name: &str) -> bool {
 }
 
 // ---------------------------------------------------------------------------
+// Transparent hugepages (YP_THP=1, Linux only; no-op elsewhere / when unset)
+// ---------------------------------------------------------------------------
+
+/// madvise(MADV_HUGEPAGE) over a contiguous Vec's buffer, so the kernel may
+/// back the records with 2 MiB hugepages (fewer TLB misses on the random
+/// record walk). Linux-only; on every other OS this is a compile-time no-op.
+/// Default (YP_THP unset) is OFF: behavior identical to before this knob.
+#[cfg(target_os = "linux")]
+fn maybe_enable_thp<T>(v: &[T], label: &str) {
+    if !env_flag("YP_THP") {
+        return;
+    }
+    let ptr = v.as_ptr() as *mut libc::c_void;
+    let len = v.len() * std::mem::size_of::<T>();
+    let rc = unsafe { libc::madvise(ptr, len, libc::MADV_HUGEPAGE) };
+    if rc == 0 {
+        println!("THP: madvise(HUGEPAGE) issued on {} ({} bytes)", label, len);
+    } else {
+        println!(
+            "THP: madvise(HUGEPAGE) on {} returned {} (errno {}) — continuing without",
+            label,
+            rc,
+            std::io::Error::last_os_error()
+        );
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn maybe_enable_thp<T>(_v: &[T], _label: &str) {}
+
+// ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
 
@@ -641,6 +674,8 @@ fn main() {
     // identical for every (K,p), so sequence-hash comparison across K is exact.
     let mut rng = XorShift(SEED);
     let graph = build_graph(n, &mut rng);
+    // THP (YP_THP=1, Linux only): hugepage-back the records before any walk.
+    maybe_enable_thp(&graph, "records");
     let grid: Vec<(usize, usize)> = if sweep {
         let mut g = Vec::new();
         for k in [1usize, 2] {
