@@ -4,6 +4,20 @@ All notable changes to Yellow Phoenix are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — 2026-11-08
+- APPLE WATCH NIGHT BENCH (physical device: Watch Series 10, devicectl
+  install+launch from M3 Pro; both ledger entries in yp_ann
+  MEASUREMENT_LEDGER.md). (1) CROWN pack nq=1000: recall@10 = 0.5268,
+  wall = 4.2s, guard-flat nq=250 = 0.5740 — ran twice, bit-identical
+  (deterministic). (2) P8 FLAT-RULER FULL re-run (GloVe 1,183,514 x 100d
+  @1 bit, nq=1000): recall@10 = 0.2839, exact-parity with the
+  pre-registered locked point and all Oct-10 watch rows; wall = 312.6s
+  (~2.5% off the ~305s banked row = thermal noise; user closed ~7
+  background apps first — no speedup, as theory predicts). Root-cause fix
+  shipped for the missing P8 button: glove1183_b1 was never bundled by the
+  YPPhoneCeiling project (only in project.yml) — folder reference added to
+  the ceiling pbxproj + project_ceiling.yml.
+
 ## [Unreleased] — 2026-11-05
 - PAPER-3 DATASET REPO COMPLETE + RENAMED FOR SEO. HF dataset repo now at
   `YellowPhoenix/fully-offline-semantic-search-apple-watch` (renamed from
