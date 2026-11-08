@@ -3,7 +3,7 @@ name: Interleave walk scout
 # Manual-only trigger: this is a cross-silicon scout, not a per-PR gate.
 # It runs the fully synthetic, public-safe interleave_walk benchmark
 # (memory-system physics; NOT an ANN recall benchmark) on GitHub-hosted
-# ubuntu-latest (x86-64) and macos-14 (arm64), and uploads the raw stdout
+# ubuntu-latest (x86-64) and macos-15 (arm64), and uploads the raw stdout
 # tables as artifacts for cross-machine comparison.
 on:
   workflow_dispatch:
@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-14]
+        os: [ubuntu-latest, macos-15]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
